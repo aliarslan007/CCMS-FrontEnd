@@ -1,0 +1,15 @@
+export { default as UserCardsView } from './user-cards-view';
+export { default as UserCreateView } from './user-create-view';
+export { default as UserCompanyView } from './user-company-view';
+export { default as UserCompnayContactView } from './user-companycontact-view';
+export { default as UserEditView } from './user-edit-view';
+export { default as UserListView } from './user-list-view';
+export { default as UserCompanyListView } from './user-companylist-view';
+export { default as UserInactiveListView } from './user-inactivelist-view';
+export { default as UserDeleteView } from './user-deletion-view';
+export { default as UserOrgChartView } from './user-orgchart-view';
+export { default as UserPermissionView } from './user-permission-view';
+export { default as UserFollowUpView } from './user-followup-view';
+// export { default as UserPermissionControlView } from './user-permissioncontrol-view';
+export { default as OverviewContactAccountView } from './user-contactaccount-view';
+export { default as UserProfileView } from './user-profile-view';

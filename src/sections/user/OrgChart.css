@@ -1,0 +1,15 @@
+/* Add space between sibling nodes */
+.orgchart-container .rd3t-leaf-node {
+  margin-right: 20px; /* Adds horizontal space between siblings */
+  margin-left: 20px;
+}
+
+/* Ensure parent-to-child connectors have proper alignment */
+.orgchart-container .rd3t-node {
+  padding: 10px; /* Add some padding to nodes */
+}
+
+/* Add vertical spacing between levels */
+.orgchart-container .rd3t-node > g {
+  transform: translateY(20px); /* Adjust child node position */
+}
