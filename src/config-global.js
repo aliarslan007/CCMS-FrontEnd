@@ -5,7 +5,8 @@ import { paths } from 'src/routes/paths';
 // ----------------------------------------------------------------------
 
 
-export const HOST_API = 'http://127.0.0.1:8000';
+// export const HOST_API = 'http://127.0.0.1:8000';
+export const HOST_API = 'https://solucomp.com/ccmsbackend/';
 
 export const ASSETS_API = process.env.REACT_APP_ASSETS_API;
 

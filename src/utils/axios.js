@@ -160,8 +160,4 @@ export const endpoints = {
     password: `/api/forgot-password`,
   },
 
-
-
-  
-
 };
