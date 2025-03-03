@@ -1,14 +1,24 @@
 import { m } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 // @mui
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import {
+  Badge,
+  Box,
+  Button,
+  IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  Popover,
+  Typography,
+} from '@mui/material';
 import Avatar from '@mui/material/Avatar';
-import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
-import IconButton from '@mui/material/IconButton';
 import MenuItem from '@mui/material/MenuItem';
+
 import Stack from '@mui/material/Stack';
 import { alpha } from '@mui/material/styles';
-import Typography from '@mui/material/Typography';
 // routes
 import { useRouter } from 'src/routes/hooks';
 import { paths } from 'src/routes/paths';
@@ -19,6 +29,8 @@ import { useAuthContext } from 'src/auth/hooks';
 import { varHover } from 'src/components/animate';
 import CustomPopover, { usePopover } from 'src/components/custom-popover';
 import { useSnackbar } from 'src/components/snackbar';
+import axiosInstance, { endpoints } from 'src/utils/axios';
+import { NotificationContext } from '../../context/NotificationContext';
 
 // ----------------------------------------------------------------------
 
@@ -41,6 +53,20 @@ export default function AccountPopover() {
 
   const photo = JSON.parse(sessionStorage.getItem('user')) || null;
 
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  const { notifications: realTimeNotifications } = useContext(NotificationContext);
+
+  const [notifications, setNotifications] = useState([]);
+
+  const [loadingNotifications, setLoadingNotifications] = useState(true);
+
+  const [errorNotifications, setErrorNotifications] = useState(null);
+
+  const [showAllNotifications, setShowAllNotifications] = useState(false);
+
+  const notificationsPerPage = 3;
+
   useEffect(() => {
     const storedUser = JSON.parse(sessionStorage.getItem('user'));
 
@@ -62,6 +88,100 @@ export default function AccountPopover() {
     setOptions(computedOptions);
   }, []);
 
+  const fetchNotifications = async () => {
+    try {
+      const userId = JSON.parse(sessionStorage.getItem('userid'));
+      if (!userId) {
+        console.warn('User ID not found in session storage.');
+        setLoadingNotifications(false);
+        return;
+      }
+
+      const token = sessionStorage.getItem('authToken');
+      const response = await axiosInstance.get(endpoints.notification.user(userId), {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+      });
+
+      setNotifications((prev) => {
+        const allNotifications = [...response.data.data, ...realTimeNotifications];
+
+        return allNotifications.filter(
+          (notif, index, self) => index === self.findIndex((n) => n.id === notif.id)
+        );
+      });
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      setErrorNotifications('Failed to load notifications');
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const markNotificationsAsRead = async () => {
+    try {
+      const userId = JSON.parse(sessionStorage.getItem('userid'));
+      if (!userId) {
+        console.warn('User ID not found in session storage.');
+        return;
+      }
+
+      const token = sessionStorage.getItem('authToken');
+      await axiosInstance.put(
+        endpoints.notification.is_read,
+        { id: userId },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+          },
+        }
+      );
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
+  };
+
+  const combinedNotifications = useMemo(() => {
+    const all = [...realTimeNotifications, ...notifications];
+    return all.filter((notif, index, self) => index === self.findIndex((n) => n.id === notif.id));
+  }, [realTimeNotifications, notifications]);
+
+  const displayedNotifications = useMemo(() => {
+    if (showAllNotifications) {
+      return combinedNotifications;
+    }
+    return combinedNotifications.slice(0, notificationsPerPage);
+  }, [combinedNotifications, showAllNotifications]);
+
+  const unreadCount = useMemo(
+    () =>
+      combinedNotifications.filter((notif) => notif.is_read === 0 || notif.is_read === undefined)
+        .length,
+    [combinedNotifications]
+  );
+
+  const handleClick = async (event) => {
+    setAnchorEl(event.currentTarget);
+    await fetchNotifications();
+    await markNotificationsAsRead();
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+    setShowAllNotifications(false);
+    setNotifications((prev) =>
+      prev.map((notif) => ({ ...notif, read_at: new Date().toISOString() }))
+    );
+  };
+
+  const handleClickItem = (path) => {
+    popover.onClose();
+    router.push(path);
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -73,13 +193,73 @@ export default function AccountPopover() {
     }
   };
 
-  const handleClickItem = (path) => {
-    popover.onClose();
-    router.push(path);
+  const formatTimestamp = (notification) => {
+    if (notification?.created_at) {
+      return new Date(notification.created_at).toLocaleString();
+    }
+    if (notification?.timestamp) {
+      return new Date(notification.timestamp).toLocaleString();
+    }
+    return 'Invalid Date';
   };
+
+  const open = Boolean(anchorEl);
+  const id = open ? 'notification-popover' : undefined;
 
   return (
     <>
+      <IconButton color="inherit" onClick={handleClick}>
+        <Badge badgeContent={unreadCount} color="error">
+          <NotificationsIcon />
+        </Badge>
+      </IconButton>
+      <Popover
+        id={id}
+        open={open}
+        anchorEl={anchorEl}
+        onClose={handleClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <Box sx={{ width: 350, p: 2 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Notifications
+          </Typography>
+          <List>
+            {displayedNotifications.map((notification) => (
+              <ListItem key={notification.id} alignItems="flex-start" divider>
+                <ListItemText
+                  primary={
+                    notification?.data?.message || notification?.message || 'No message available'
+                  }
+                  secondary={
+                    <Typography variant="caption" color="text.secondary">
+                      {formatTimestamp(notification)}
+                    </Typography>
+                  }
+                />
+              </ListItem>
+            ))}
+          </List>
+          {combinedNotifications.length > notificationsPerPage && (
+            <Button
+              fullWidth
+              variant="text"
+              onClick={() => setShowAllNotifications(!showAllNotifications)}
+              sx={{ mt: 1 }}
+            >
+              {showAllNotifications ? 'Show Less' : 'View All'}
+            </Button>
+          )}
+        </Box>
+      </Popover>
+
       <IconButton
         component={m.button}
         whileTap="tap"

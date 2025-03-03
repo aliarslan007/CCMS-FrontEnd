@@ -23,6 +23,7 @@ import TextField from '@mui/material/TextField';
 import CustomPopover, { usePopover } from 'src/components/custom-popover';
 import Iconify from 'src/components/iconify';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 
 // ----------------------------------------------------------------------
 
@@ -35,6 +36,7 @@ export default function UserTableToolbar({
   onTypeChange,
   onExport,
   onImport,
+  moduleName,
 }) {
   const popover = usePopover();
 
@@ -110,6 +112,7 @@ export default function UserTableToolbar({
   const fileInputRef = useRef();
 
   const handleFileChange = (event) => {
+    logActivity('Contact data import requested by user', moduleName || 'CLIENT ACCOUNT MANAGEMENT');
     const files = Array.from(event.target.files);
     const validFiles = files.filter(
       (file) => file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -327,4 +330,5 @@ UserTableToolbar.propTypes = {
   onTypeChange: PropTypes.func.isRequired,
   onExport: PropTypes.func.isRequired,
   onImport: PropTypes.func.isRequired,
+  moduleName: PropTypes.string,
 };

@@ -1,5 +1,5 @@
 import isEqual from 'lodash/isEqual';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 // @mui
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -32,8 +32,10 @@ import {
   useTable,
 } from 'src/components/table';
 //
+import PropTypes from 'prop-types';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 import UserTableToolbar from '../contact-table-toolbar';
 import UserTableFiltersResult from '../user-table-filters-result';
 import UserTableRow from '../user-table-row-contact';
@@ -59,7 +61,7 @@ const defaultFilters = {
 
 // ----------------------------------------------------------------------
 
-export default function OverviewContactAccountView() {
+export default function OverviewContactAccountView({ moduleName }) {
   const table = useTable();
 
   const settings = useSettingsContext();
@@ -90,8 +92,15 @@ export default function OverviewContactAccountView() {
 
   const [duplicateRecords, setDuplicateRecords] = useState([]);
 
+  const logSentRef = useRef(false);
+
   useEffect(() => {
     const fetchUsers = async () => {
+      if (!logSentRef.current) {
+        const dynamicModuleName = moduleName || 'CCMS USER MANAGMENT';
+        logActivity('User view Client Contact List', dynamicModuleName);
+        logSentRef.current = true;
+      }
       setLoading(true);
       try {
         const token = sessionStorage.getItem('authToken');
@@ -110,7 +119,7 @@ export default function OverviewContactAccountView() {
       }
     };
     fetchUsers();
-  }, []);
+  }, [moduleName]);
 
   // Handle inactive contacts
   const handleMarkInactive = async () => {
@@ -132,6 +141,7 @@ export default function OverviewContactAccountView() {
         })),
       };
       await axiosInstance.patch(url, data);
+      logActivity('User Inactive A Contact', moduleName || 'CLIENT ACCOUNT MANAGEMENT');
       enqueueSnackbar('Selected contacts marked as inactive', { variant: 'success' });
 
       setUsers((prevUsers) =>
@@ -215,6 +225,11 @@ export default function OverviewContactAccountView() {
         ids: selectedIds,
         fields: selectedFields,
       });
+
+      logActivity(
+        'Contact data export requested by user',
+        moduleName || 'CLENT ACCOUNT MANAGEMENT'
+      );
 
       if (response.data.file_path) {
         const link = document.createElement('a');
@@ -534,25 +549,46 @@ export default function OverviewContactAccountView() {
       />
       <Box>
         <Grid container>{/* Your content */}</Grid>
+
         <Box
           component="footer"
           sx={{
             marginTop: '70px',
             display: 'flex',
-            justifyContent: 'center',
+            justifyContent: 'flex-end',
             alignItems: 'center',
             height: '50px',
-            left: '170px',
             position: 'fixed',
             bottom: 0,
-            width: '80%',
+            left: '-50px',
+            width: '100%',
+            maxWidth: '1520px',
+            margin: 'auto',
             zIndex: 1300,
             backgroundColor: 'white',
+            padding: '10px',
+            paddingRight: '50px',
+
+            // Responsive styling
+            '@media (max-width: 1024px)': {
+              justifyContent: 'center',
+              paddingRight: '20px',
+            },
+
+            '@media (max-width: 600px)': {
+              justifyContent: 'center',
+              left: '0',
+              width: '100%',
+              padding: '10px 15px',
+            },
           }}
         >
           <Typography variant="body2" color="textSecondary">
             &copy; {new Date().getFullYear()}
-            <strong>www.SoluComp.com</strong> v1.0
+            <span style={{ marginLeft: '5px' }}>
+              <strong>www.SoluComp.com</strong>
+            </span>
+            v1.0
           </Typography>
         </Box>
       </Box>
@@ -591,3 +627,7 @@ function applyFilter({ inputData, comparator, filters }) {
 
   return inputData;
 }
+
+OverviewContactAccountView.propTypes = {
+  moduleName: PropTypes.string,
+};

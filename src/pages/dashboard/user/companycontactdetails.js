@@ -34,22 +34,20 @@ import { Container, css, styled } from '@mui/system';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useSnackbar } from 'notistack';
 import PropTypes from 'prop-types';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import ActivityIcon from 'src/assets/Images/activity-icon.png';
 import chart from 'src/assets/Images/chart.png';
 import filterIcon from 'src/assets/Images/filter-icon.jpg';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 import { paths } from '../../../routes/paths';
 
-export default function CompanyContactDetails() {
+export default function CompanyContactDetails({ moduleName }) {
   const { id } = useParams();
   const [followUpDetails, setFollowUpDetails] = useState('');
   const [selectedDate, setSelectedDate] = useState(null);
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  // const location = useLocation();
-  // const { contact } = location.state || {};
   const [contact, setContact] = useState([]);
   const { enqueueSnackbar } = useSnackbar();
   const [isMarked, setIsMarked] = useState(false);
@@ -64,7 +62,6 @@ export default function CompanyContactDetails() {
   const [selectedFileName, setSelectedFileName] = useState('');
   const [files, setFiles] = useState([]);
   const [awards, setAwards] = useState([]);
-  const [follow_up_date, setFollowUpDate] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [openViewAwardDialog, setOpenViewAwardDialog] = useState(false);
   const [award, setAward] = useState('');
@@ -77,40 +74,60 @@ export default function CompanyContactDetails() {
   const [awardDetail, setAwardDetail] = useState('');
   const [salesReps, setSalesReps] = useState([]);
   const [selectedSalesRep, setSelectedSalesRep] = useState(null);
+  const [detailText, setDetailText] = useState('');
+  const [openDetailDialog, setOpenDetailDialog] = useState(false);
+  const logSentRef = useRef(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfileStatusAndFollowUps = async () => {
+      setLoading(true);
+      if (!logSentRef.current) {
+        const dynamicModuleName = moduleName || 'COMPANY CONTACT DETAILS PAGE';
+        logActivity('User view company contact details', dynamicModuleName);
+        logSentRef.current = true;
+      }
       try {
         const token = sessionStorage.getItem('authToken');
-
-        const contactResponse = await axiosInstance.get(endpoints.solo.details(id), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
         const userId = sessionStorage.getItem('uuid');
         if (!userId) {
-          console.error('User ID not found in localStorage');
+          console.error('User ID not found in SessionStorage');
           return;
         }
-        const response = await axiosInstance.get(endpoints.profile.details(userId));
-        const fetchedUser = response.data;
+
+        // Split contact fetch from profile fetch
+        const contactPromise = axiosInstance.get(endpoints.solo.details(id), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // Update with contact data first
+        const contactResponse = await contactPromise;
+        setContact(contactResponse.data || []); 
+
+        // Then fetch profile data
+        const profileResponse = await axiosInstance.get(endpoints.profile.details(userId), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const fetchedUser = profileResponse.data;
         const Access = fetchedUser.access;
         setUserAccess(Access);
-        setContact(contactResponse.data || []);
-
         setPermissionsBasedOnAccess(Access);
       } catch (error) {
         console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
       }
     };
+
     fetchProfileStatusAndFollowUps();
-  }, [id, userAccess]);
+  }, [id, moduleName]);
+  // Removed userAccess from dependencies
 
   useEffect(() => {
     const fetchMarkedStatus = async () => {
       try {
-        if (contact && contact.length > 0) {
+        if (contact && contact.length > 0 && contact[0].marked_for_deletion_flag) {
           const statusResponse = await axiosInstance.get(
             endpoints.markdelete.get_marked(contact[0].id)
           );
@@ -121,6 +138,8 @@ export default function CompanyContactDetails() {
             setButtonText('Mark For Deletion');
             setIsMarked(false);
           }
+        } else {
+          console.log('Marked for deletion flag is false; skipping marked status fetch.');
         }
       } catch (error) {
         console.error('Error fetching marked status:', error);
@@ -183,29 +202,36 @@ export default function CompanyContactDetails() {
   };
 
   const fetchFollowUps = useCallback(async () => {
+    if (!contact || contact.length === 0) return;
+
+    // Fetch follow-ups only if follow_up_flag is true
     try {
-      try {
+      if (contact[0].follow_up_flag) {
         const followUpsResponse = await axiosInstance.get(
           endpoints.follow_up.details(contact[0]?.id)
         );
         if (followUpsResponse.data) {
           setFollowUps(followUpsResponse.data.data);
         }
-      } catch (error) {
-        console.error('Error fetching follow-ups:', error);
+      } else {
+        console.log('Follow-up flag is false; skipping follow-ups fetch.');
       }
+    } catch (error) {
+      console.error('Error fetching follow-ups:', error);
+    }
 
-      // Fetch files
-      try {
+    // Fetch files only if files_flag is true
+    try {
+      if (contact[0].files_flag) {
         const filesResponse = await axiosInstance.get(endpoints.files.list(contact[0]?.id));
         if (filesResponse.data) {
           setFiles(filesResponse.data.data);
         }
-      } catch (error) {
-        console.error('Error fetching files:', error);
+      } else {
+        console.log('Files flag is false; skipping files fetch.');
       }
     } catch (error) {
-      console.error('Unexpected error occurred:', error);
+      console.error('Error fetching files:', error);
     }
   }, [contact]);
 
@@ -214,13 +240,17 @@ export default function CompanyContactDetails() {
   }, [fetchFollowUps]);
 
   const fetchAwards = useCallback(async () => {
+    if (!contact || contact.length === 0) return;
     try {
-      const awardsResponse = await axiosInstance.get(endpoints.award.function, {
-        params: { company_contact_id: contact[0]?.id },
-      });
-
-      if (awardsResponse.data) {
-        setAwards(awardsResponse.data.data);
+      if (contact[0].award_flag) {
+        const awardsResponse = await axiosInstance.get(endpoints.award.function, {
+          params: { company_contact_id: contact[0]?.id },
+        });
+        if (awardsResponse.data) {
+          setAwards(awardsResponse.data.data);
+        }
+      } else {
+        console.log('Award flag is false; skipping awards fetch.');
       }
     } catch (error) {
       console.error('Error fetching awards:', error);
@@ -271,6 +301,11 @@ export default function CompanyContactDetails() {
         endpoints.markdelete.marked(contact[0]?.id),
         payload
       );
+      logActivity(
+        'User marked a contact for delete',
+        moduleName || 'COMPANY CONTACT DETAILS PAGE',
+        { identification: contact[0]?.client_first_name }
+      );
       enqueueSnackbar(response.data.message, { variant: 'success' });
       setIsMarked(true);
       sessionStorage.setItem(`markedForDeletion-${id}`, 'true');
@@ -302,6 +337,9 @@ export default function CompanyContactDetails() {
   // Hanlde the Follow_up
   const userId = sessionStorage.getItem('userid');
   const handleSubmit = async () => {
+    logActivity('User add notes to contact', moduleName || 'COMPANY CONTACT DETAILS PAGE', {
+      identification: contact[0]?.client_first_name,
+    });
     try {
       if (!followUpDetails) {
         enqueueSnackbar('Please fill in the Add Notes.', { variant: 'error' });
@@ -337,6 +375,9 @@ export default function CompanyContactDetails() {
   };
 
   const handleFileUpload = async () => {
+    logActivity('User uploads a file', moduleName || 'COMPANY CONTACT DETAILS PAGE', {
+      identification: contact[0]?.client_first_name,
+    });
     const formData = new FormData();
     formData.append('id', userId);
     formData.append('company_contacts_id', contact[0]?.id);
@@ -369,6 +410,9 @@ export default function CompanyContactDetails() {
       enqueueSnackbar('Please select a follow-up date.', { variant: 'warning' });
       return;
     }
+    logActivity('User add a follow-up date', moduleName || 'COMPANY CONTACT DETAILS PAGE', {
+      identification: contact[0]?.client_first_name,
+    });
     const localUserAccess = sessionStorage.getItem('userid');
     if (!localUserAccess) {
       enqueueSnackbar('User ID is missing. Please log in again.', { variant: 'error' });
@@ -409,6 +453,9 @@ export default function CompanyContactDetails() {
   };
 
   const handleSave = async () => {
+    logActivity('User add a award', moduleName || 'COMPANY CONTACT DETAILS PAGE', {
+      identification: contact[0]?.client_first_name,
+    });
     try {
       if (!award || !id) {
         enqueueSnackbar('Award and Company Contact ID are required', { variant: 'error' });
@@ -483,6 +530,39 @@ export default function CompanyContactDetails() {
     setOpenViewAwardDialog(true);
   };
 
+  const handleDetailClick = (detailFromProps) => {
+    setDetailText(detailFromProps);
+    setOpenDetailDialog(true);
+  };
+
+  const handleDeleteFile = async (fileId) => {
+    logActivity('User delete a file', moduleName || 'COMPANY CONTACT DETAILS PAGE', {
+      identification: contact[0]?.client_first_name,
+    });
+    try {
+      if (window.confirm('Are you sure you want to delete this file?')) {
+        const response = await axiosInstance.delete(`/api/files/${fileId}`);
+
+        if (response.status === 200) {
+          enqueueSnackbar(response.data.message || 'File deleted successfully', {
+            variant: 'success',
+          });
+
+          const updatedFiles = files.filter((filee) => filee.id !== fileId);
+          setFiles(updatedFiles);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      enqueueSnackbar(error.response?.data?.message || 'Failed to delete the file', {
+        variant: 'error',
+      });
+    }
+  };
+
+  const companyAccountId = contact[0]?.company_account_id;
+  const encodedCompanyId = companyAccountId ? btoa(companyAccountId.toString()) : null;
+
   return (
     <>
       <Container maxWidth="">
@@ -499,10 +579,12 @@ export default function CompanyContactDetails() {
             sx={{
               backgroundColor: isMarked ? '#ccc' : 'red',
               color: '#fff',
-              fontSize: '12px',
+              fontSize: '14px',
               fontWeight: '500',
               textTransform: 'none',
               marginRight: '10px',
+              borderRadius: '6px',
+              padding: '8px 16px',
               '&:hover': {
                 backgroundColor: '#cc0000',
               },
@@ -512,21 +594,46 @@ export default function CompanyContactDetails() {
           >
             {buttonText}
           </Button>
-          <Box
-            component="img"
+          <Button
+            variant="contained"
+            startIcon={
+              <Box
+                component="img"
+                sx={{
+                  width: 20,
+                  height: 20,
+                  filter: 'brightness(0) invert(1)',
+                }}
+                src={chart}
+                alt="Organization Chart Icon"
+              />
+            }
             sx={{
-              marginRight: '10px',
+              backgroundColor: 'primary.main',
+              color: 'common.white',
+              fontSize: '14px',
+              fontWeight: 500,
+              textTransform: 'none',
+              borderRadius: '6px',
+              padding: '8px 16px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              '&:hover': {
+                backgroundColor: 'primary.dark',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              },
             }}
-            src={chart}
-            alt="Profile"
-          />
-          <Link
-            sx={{ color: 'rgba(24, 35, 61, 1)', fontSize: '14px' }}
-            to="/dashboard/user/orgchart" // Use 'to' instead of 'href'
-            underline="sx"
+            component={Link}
+            to={`/dashboard/user/orgchart?data=${encodedCompanyId}`}
+            onClick={() => {
+              logActivity(
+                'User viewed the Organization Chart',
+                moduleName || 'COMPANY CONTACT DETAILS PAGE',
+                { identification: contact[0]?.client_first_name || 'Unknown' }
+              );
+            }}
           >
             View Organization Chart
-          </Link>
+          </Button>
         </Box>
         <Box sx={{ flexGrow: 1 }}>
           <Grid container spacing={2}>
@@ -559,24 +666,10 @@ export default function CompanyContactDetails() {
               <Box
                 sx={{
                   boxShadow: '0 4px 6px rgba(171, 180, 207, 0.12)',
-                  paddingBottom: '10px',
+                  paddingBottom: '25px',
                   borderRadius: '8px',
                 }}
               >
-                {/* <Box
-                  sx={{
-                    backgroundColor: 'rgba(0, 166, 109, 1)',
-                    padding: '10px 20px',
-                    borderRadius: '10px 10px 0 0',
-                  }}
-                >
-                  <Typography
-                    variant="h6"
-                    sx={{ fontSize: '5px', color: 'rgba(255, 255, 255, 1)' }}
-                  >
-                    {`${contact[0]?.title} ${contact[0]?.client_last_name}` || 'No Title'}
-                  </Typography>
-                </Box> */}
                 <Box
                   sx={{
                     padding: '0 8px',
@@ -587,6 +680,7 @@ export default function CompanyContactDetails() {
                 >
                   <Box
                     component="img"
+                    loading="lazy"
                     sx={{
                       // position: 'absolute',
                       top: '-22px',
@@ -599,16 +693,6 @@ export default function CompanyContactDetails() {
                     src={contact[0]?.photo_url || 'No Photo'}
                     alt="Profile"
                   />
-                  {/* <Typography
-                    variant="span"
-                    sx={{
-                      fontSize: '14px',
-                      display: 'block',
-                      color: 'rgba(107, 119, 154, 1)',
-                    }}
-                  >
-                    Welcome
-                  </Typography> */}
                   <Typography
                     variant="h6"
                     sx={{ fontSize: '22px', marginBottom: '0', color: 'rgba(24, 35, 61, 1)' }}
@@ -621,11 +705,22 @@ export default function CompanyContactDetails() {
                   >
                     {`${contact[0]?.title}` || 'No Title'}
                   </Typography>
-                  {/* <Typography
-                    sx={{ fontSize: '12px', marginBottom: '12px', color: 'rgba(107, 119, 154, 1)' }}
+                  <Typography
+                    sx={{
+                      fontSize: '13px',
+                      color: 'rgba(171, 180, 207, 1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '12px',
+                    }}
                   >
-                    {contact.office_email}
-                  </Typography> */}
+                    Company:
+                    <Typography
+                      sx={{ color: 'rgba(107, 119, 154, 1)', fontSize: '14px', marginLeft: '3px' }}
+                    >
+                      {contact[0]?.company_name || 'No Company Name'}
+                    </Typography>
+                  </Typography>
                   <Typography
                     sx={{
                       fontSize: '13px',
@@ -667,7 +762,7 @@ export default function CompanyContactDetails() {
                       marginBottom: '12px',
                     }}
                   >
-                    Title:
+                    Job Title:
                     <Typography
                       sx={{ color: 'rgba(107, 119, 154, 1)', fontSize: '13px', marginLeft: '3px' }}
                     >
@@ -683,9 +778,50 @@ export default function CompanyContactDetails() {
                       marginBottom: '12px',
                     }}
                   >
+                    Business Email:
+                    <Typography
+                      component="a"
+                      href={`mailto:${contact[0]?.office_email || ''}`}
+                      sx={{
+                        color: '#4B79F7',
+                        fontSize: '14px',
+                        marginLeft: '3px',
+                        textDecoration: 'none',
+                        transition: 'color 0.3s ease',
+                        '&:hover': {
+                          color: '#4B79F7',
+                          textDecoration: 'underline',
+                        },
+                      }}
+                    >
+                      {contact[0]?.office_email || 'No Business Email'}
+                    </Typography>
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      fontSize: '13px',
+                      color: 'rgba(171, 180, 207, 1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '12px',
+                    }}
+                  >
                     Personal Email:
                     <Typography
-                      sx={{ color: 'rgba(107, 119, 154, 1)', fontSize: '13px', marginLeft: '3px' }}
+                      component="a"
+                      href={`mailto:${contact[0]?.personal_email || ''}`}
+                      sx={{
+                        color: '#4B79F7',
+                        fontSize: '13px',
+                        marginLeft: '3px',
+                        textDecoration: 'none',
+                        transition: 'color 0.3s ease',
+                        '&:hover': {
+                          color: '#4B79F7',
+                          textDecoration: 'underline',
+                        },
+                      }}
                     >
                       {contact[0]?.personal_email || 'No Personal Email'}
                     </Typography>
@@ -699,11 +835,11 @@ export default function CompanyContactDetails() {
                       marginBottom: '12px',
                     }}
                   >
-                    Office Email:
+                    Mobile Phone:
                     <Typography
                       sx={{ color: 'rgba(107, 119, 154, 1)', fontSize: '14px', marginLeft: '3px' }}
                     >
-                      {contact[0]?.office_email || 'No Office Email'}
+                      {contact[0]?.cell_phone1 || 'Office Phone 1'}
                     </Typography>
                   </Typography>
                   <Typography
@@ -715,39 +851,7 @@ export default function CompanyContactDetails() {
                       marginBottom: '12px',
                     }}
                   >
-                    Cell 1:
-                    <Typography
-                      sx={{ color: 'rgba(107, 119, 154, 1)', fontSize: '14px', marginLeft: '3px' }}
-                    >
-                      {contact[0]?.cell_phone1 || 'No Cell Phone 1'}
-                    </Typography>
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: '13px',
-                      color: 'rgba(171, 180, 207, 1)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      marginBottom: '12px',
-                    }}
-                  >
-                    Cell 2:
-                    <Typography
-                      sx={{ color: 'rgba(107, 119, 154, 1)', fontSize: '14px', marginLeft: '3px' }}
-                    >
-                      {contact[0]?.cell_phone2 || 'No Cell Phone 2'}
-                    </Typography>
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: '13px',
-                      color: 'rgba(171, 180, 207, 1)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      marginBottom: '12px',
-                    }}
-                  >
-                    Office 1:
+                    Buisness Phone 1:
                     <Typography
                       sx={{ color: 'rgba(107, 119, 154, 1)', fontSize: '14px', marginLeft: '3px' }}
                     >
@@ -763,7 +867,7 @@ export default function CompanyContactDetails() {
                       marginBottom: '12px',
                     }}
                   >
-                    Office 2:
+                    Buisness Phone 2:
                     <Typography
                       sx={{ color: 'rgba(107, 119, 154, 1)', fontSize: '14px', marginLeft: '3px' }}
                     >
@@ -779,13 +883,53 @@ export default function CompanyContactDetails() {
                       marginBottom: '12px',
                     }}
                   >
-                    Follow Up Date :
+                    Other Phone:
                     <Typography
                       sx={{ color: 'rgba(107, 119, 154, 1)', fontSize: '14px', marginLeft: '3px' }}
                     >
-                      {contact[0]?.follow_up_date || 'No follow up date provided'}
+                      {contact[0]?.cell_phone1 || 'Other Phone 2'}
                     </Typography>
                   </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: '13px',
+                      color: 'rgba(171, 180, 207, 1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    Business Fax:
+                    <Typography
+                      sx={{ color: 'rgba(107, 119, 154, 1)', fontSize: '14px', marginLeft: '3px' }}
+                    >
+                      {contact[0]?.business_fax || 'Business Fax'}
+                    </Typography>
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: '13px',
+                      color: 'rgba(171, 180, 207, 1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '12px',
+                      flexWrap: 'wrap', // Ensures content doesn't break oddly
+                    }}
+                  >
+                    Special Notes:&nbsp;
+                    <Typography
+                      component="span" // Makes this behave like an inline element
+                      sx={{
+                        color: 'rgba(107, 119, 154, 1)',
+                        fontSize: '14px',
+                        marginLeft: '3px',
+                        whiteSpace: 'normal', // Ensures proper text wrapping
+                      }}
+                    >
+                      {contact[0]?.special_notes || 'No Special Notes'}
+                    </Typography>
+                  </Typography>
+
                   <Typography
                     sx={{
                       fontSize: '13px',
@@ -810,283 +954,563 @@ export default function CompanyContactDetails() {
                   </Typography>
                 </Box>
               </Box>
-              <Grid item xs={12} md={12} mt={4} mb={4}>
-                <Typography
-                  sx={{ fontSize: '8px', color: 'rgba(24, 35, 61, 1)', marginBottom: '15px' }}
-                  variant="h6"
-                  gutterBottom
-                >
-                  Files
-                </Typography>
-                <TableContainer
-                  component={Paper}
-                  sx={{
-                    maxHeight: 200,
-                    overflowY: 'auto',
-                  }}
-                >
-                  <Table sx={{ borderCollapse: 'separate', borderSpacing: '0 10px' }}>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell
-                          sx={{
-                            backgroundColor: 'rgba(224, 237, 250, 1)',
-                            color: 'rgba(24, 35, 61, 1)',
-                            fontSize: '14px', // Smaller font size
-                            padding: '8px', // Reduced padding
-                            borderRadius: '10px 0 0 10px',
-                          }}
-                        >
-                          Rep Name
-                        </TableCell>
-
-                        <TableCell
-                          sx={{
-                            backgroundColor: 'rgba(224, 237, 250, 1)',
-                            color: 'rgba(24, 35, 61, 1)',
-                            fontSize: '14px', // Smaller font size
-                            padding: '8px', // Reduced padding
-                          }}
-                        >
-                          Date&Time
-                        </TableCell>
-
-                        <TableCell
-                          sx={{
-                            backgroundColor: 'rgba(224, 237, 250, 1)',
-                            color: 'rgba(24, 35, 61, 1)',
-                            fontSize: '14px', 
-                            padding: '8px', 
-                            borderRadius: '0 10px 10px 0',
-                          }}
-                        >
-                          File
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody className="Table-custom">
-                      {files.map((row, index) => (
-                        <TableRow
-                          sx={{
-                            boxShadow: '0 4px 6px rgb(171 180 207 / 22%)',
-                            borderRadius: '10px',
-                            minHeight: '48px',
-                          }}
-                          key={index}
-                        >
-                          <TableCell sx={{ padding: '8px', fontSize: '14px' }}>
-                            {contact[0]?.client_first_name}
-                          </TableCell>
-                          <TableCell sx={{ padding: '8px', fontSize: '14px' }}>
-                            {row.created_at
-                              ? new Intl.DateTimeFormat('en-US', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  second: '2-digit',
-                                  hour12: true, // For 12-hour format
-                                }).format(new Date(row.created_at))
-                              : 'N/A'}
-                          </TableCell>
-
-                          <TableCell sx={{ padding: '8px', fontSize: '14px' }}>
-                            {row.file_path ? (
-                              <>
-                                {console.log('File Path:', row.file_path)} {/* Log the file path */}
-                                <a
-                                  style={{
-                                    color: '#007BFF',
-                                    fontWeight: '700',
-                                    fontSize: '14px',
-                                    textDecoration: 'none',
-                                    cursor: 'pointer',
-                                  }}
-                                  href={row.file_path}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  download
-                                >
-                                  Download File
-                                </a>
-                              </>
-                            ) : (
-                              'No file attached'
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Grid>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Box
-                sx={{
-                  boxShadow: '0 4px 6px rgba(171, 180, 207, 0.12)',
-                  paddingBottom: '10px',
-                  borderRadius: '8px',
-                }}
-              >
-                <Box
-                  sx={{
-                    backgroundColor: 'rgba(0, 166, 109, 1)',
-                    padding: '8px 22px',
-                    borderRadius: '10px 10px 0 0',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Typography
-                    variant="h6"
-                    sx={{ fontSize: '15px', color: 'rgba(255, 255, 255, 1)' }}
-                  >
-                    Contact Details
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    {/* "Edit" Button */}
-                    {canEdit ? (
-                      <ButtonBase
-                        sx={{
-                          display: 'inline-block',
-                          backgroundColor: 'transparent',
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          },
-                        }}
-                        onClick={() => handleActionPermissionCheck('edit')}
-                      >
-                        <Typography variant="body2" sx={{ fontSize: '14px', color: '#fff' }}>
-                          Edit
-                        </Typography>
-                      </ButtonBase>
-                    ) : (
-                      <Typography variant="body2" sx={{ fontSize: '14px', color: '#aaa' }}>
-                        Edit (Permission Denied)
-                      </Typography>
-                    )}
-
-                    {/* "Add New Contact" Button */}
-                    {canAddContact ? (
-                      <ButtonBase
-                        sx={{
-                          display: 'inline-block',
-                          backgroundColor: 'transparent',
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          },
-                        }}
-                        onClick={() => handleActionPermissionCheck('addContact')}
-                      >
-                        <Typography variant="body2" sx={{ fontSize: '14px', color: '#fff' }}>
-                          Add New Contact
-                        </Typography>
-                      </ButtonBase>
-                    ) : (
-                      <Typography variant="body2" sx={{ fontSize: '14px', color: '#aaa' }}>
-                        Add New Contact (Permission Denied)
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
-                <Box
-                  sx={{
-                    padding: '0 22px',
-                    position: 'relative',
-                    paddingTop: '12px',
-                  }}
-                >
-                  <Typography
-                    variant="span"
+              <Grid item xs={12} mt={4}>
+                <Grid container sx={{ marginTop: '10px' }} spacing={2} justifyContent="center">
+                  <Card
                     sx={{
-                      fontSize: '14px',
-                      display: 'block',
-                      color: 'rgba(171, 180, 207, 1)',
+                      padding: '15px 15px 15px 15px',
+                      marginBottom: '20px',
+                      marginTop: '15px',
+                      minHeight: '219px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      flexDirection: 'column',
                     }}
                   >
-                    Responsibilities
-                  </Typography>
-                  <Typography
-                    variant="p"
-                    sx={{
-                      fontSize: '14px',
-                      marginBottom: '14px',
-                      display: 'block',
-                      color: 'rgba(107, 119, 154, 1)',
-                    }}
-                  >
-                    {contact[0]?.responsibilities || 'No Responsibilities'}
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Grid container spacing={2}>
-                      <Grid item sx={12}>
+                    {selectedFileName && (
+                      <Grid item>
                         <Typography
-                          variant="span"
                           sx={{
                             fontSize: '14px',
-                            display: 'block',
-                            color: 'rgba(171, 180, 207, 1)',
+                            color: '#333',
+                            marginTop: '8px',
                           }}
                         >
-                          Reports To:
+                          Selected File: {selectedFileName}
+                          <IconButton
+                            onClick={handleRemoveFile}
+                            sx={{
+                              marginLeft: '8px',
+                              padding: 0,
+                            }}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              fill="currentColor"
+                              className="bi bi-x-circle"
+                              viewBox="0 0 16 16"
+                            >
+                              <path d="M16 8a8 8 0 1 0-8 8 8 8 0 0 0 8-8ZM8 1a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm4.146 5.854a.5.5 0 0 0-.708-.708L8 9.293 4.854 6.146a.5.5 0 1 0-.708.708L7.293 10l-3.146 3.146a.5.5 0 0 0 .708.708L8 10.707l3.146 3.146a.5.5 0 0 0 .708-.708L8.707 10l3.146-3.146Z" />
+                            </svg>
+                          </IconButton>
+                        </Typography>
+                      </Grid>
+                    )}
+                    <Grid item>
+                      <Button
+                        sx={{
+                          fontSize: '14px',
+                          fontWeight: '400',
+                          borderRadius: '3px',
+                          backgroundColor: !canAddNote
+                            ? 'rgba(0, 0, 0, 0.26)'
+                            : 'rgba(0, 166, 109, 1)',
+                          paddingInline: '25px',
+                          textTransform: 'none',
+                          width: '100%',
+                        }}
+                        variant="contained"
+                        component="label"
+                        disabled={!canAddNote} // Disable button if user lacks access
+                      >
+                        Upload File
+                        <input type="file" hidden onChange={handleFileChange} />
+                      </Button>
+                      <Typography
+                        sx={{
+                          color: 'rgba(24, 35, 61, 0.6)', // Light color
+                          fontSize: '12px',
+                          fontWeight: '300',
+                          mt: '6px',
+                        }}
+                        variant="body2"
+                        gutterBottom
+                      >
+                        Upload File (Supported formats: JPG, JPEG, PNG, PDF, DOC, DOCX - Max size:
+                        2MB)
+                      </Typography>
+                    </Grid>
+                    <Grid item sx={{ textAlign: 'center', marginTop: '30px' }}>
+                      <Button
+                        sx={{
+                          fontSize: '14px',
+                          fontWeight: '400',
+                          borderRadius: '3px',
+                          backgroundColor: !canAddNote
+                            ? 'rgba(0, 0, 0, 0.26)'
+                            : 'rgba(75, 121, 247, 1)',
+                          paddingInline: '25px',
+                          color: !canAddNote ? '#a1a1a1' : '#fff',
+                          left: '4px',
+                        }}
+                        variant="contained"
+                        color="success"
+                        onClick={handleFileUpload}
+                        disabled={!canAddNote}
+                      >
+                        Save
+                      </Button>
+                    </Grid>
+                  </Card>
+                </Grid>
+              </Grid>
+              <Grid item xs={12} md={12} mb={4}>
+                <Card sx={{ padding: '15px 15px 15px 15px' }}>
+                  <Typography
+                    sx={{ fontSize: '8px', color: 'rgba(24, 35, 61, 1)', marginBottom: '15px' }}
+                    variant="h6"
+                    gutterBottom
+                  >
+                    Files
+                  </Typography>
+                  <TableContainer
+                    component={Paper}
+                    sx={{
+                      maxHeight: 200,
+                      overflowY: 'auto',
+                      width: '100%',
+                      minWidth: '250px',
+                    }}
+                  >
+                    <Table sx={{ borderCollapse: 'separate', borderSpacing: '0 10px' }}>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell
+                            sx={{
+                              backgroundColor: 'rgba(224, 237, 250, 1)',
+                              color: 'rgba(24, 35, 61, 1)',
+                              fontSize: '14px', // Smaller font size
+                              padding: '8px', // Reduced padding
+                              borderRadius: '10px 0 0 10px',
+                            }}
+                          >
+                            Rep Name
+                          </TableCell>
+
+                          <TableCell
+                            sx={{
+                              backgroundColor: 'rgba(224, 237, 250, 1)',
+                              color: 'rgba(24, 35, 61, 1)',
+                              fontSize: '14px', // Smaller font size
+                              padding: '8px', // Reduced padding
+                            }}
+                          >
+                            Date&Time
+                          </TableCell>
+
+                          <TableCell
+                            sx={{
+                              backgroundColor: 'rgba(224, 237, 250, 1)',
+                              color: 'rgba(24, 35, 61, 1)',
+                              fontSize: '14px',
+                              padding: '8px',
+                            }}
+                          >
+                            File
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              backgroundColor: 'rgba(224, 237, 250, 1)',
+                              color: 'rgba(24, 35, 61, 1)',
+                              fontSize: '14px',
+                              padding: '8px',
+                              borderRadius: '0 10px 10px 0',
+                            }}
+                          >
+                            Delete
+                          </TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody className="Table-custom">
+                        {files.map((row, index) => (
+                          <TableRow
+                            sx={{
+                              boxShadow: '0 4px 6px rgb(171 180 207 / 22%)',
+                              borderRadius: '10px',
+                              minHeight: '48px',
+                            }}
+                            key={index}
+                          >
+                            <TableCell sx={{ padding: '8px', fontSize: '14px' }}>
+                              {contact[0]?.client_first_name}
+                            </TableCell>
+                            <TableCell sx={{ padding: '8px', fontSize: '14px' }}>
+                              {row.created_at
+                                ? new Intl.DateTimeFormat('en-US', {
+                                    year: 'numeric',
+                                    month: 'numeric',
+                                    day: 'numeric',
+                                  }).format(new Date(row.created_at))
+                                : 'N/A'}
+                            </TableCell>
+
+                            <TableCell sx={{ padding: '8px', fontSize: '14px' }}>
+                              {row.file_path ? (
+                                <>
+                                  {console.log('File Path:', row.file_path)}{' '}
+                                  {/* Log the file path */}
+                                  <a
+                                    style={{
+                                      color: '#007BFF',
+                                      fontWeight: '700',
+                                      fontSize: '14px',
+                                      textDecoration: 'none',
+                                      cursor: 'pointer',
+                                    }}
+                                    href={row.file_path}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    download
+                                  >
+                                    Download File
+                                  </a>
+                                </>
+                              ) : (
+                                'No file attached'
+                              )}
+                            </TableCell>
+                            {/* Delete Button */}
+                            <TableCell sx={{ padding: '8px', fontSize: '14px' }}>
+                              <button
+                                type="button" // Explicitly set the type to "button"
+                                style={{
+                                  backgroundColor: '#ff4444',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: '5px',
+                                  padding: '8px 12px',
+                                  fontSize: '14px',
+                                  cursor: 'pointer',
+                                }}
+                                onClick={() => handleDeleteFile(row.id)}
+                              >
+                                Delete
+                              </button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Card>
+              </Grid>
+            </Grid>
+            <Grid item xs={12} md={9}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={9}>
+                  <Box
+                    sx={{
+                      boxShadow: '0 4px 6px rgba(171, 180, 207, 0.12)',
+                      paddingBottom: '10px',
+                      borderRadius: '8px',
+                      minHeight: '180px',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        backgroundColor: 'rgba(0, 166, 109, 1)',
+                        padding: '8px 22px',
+                        borderRadius: '10px 10px 0 0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Typography
+                        variant="h6"
+                        sx={{ fontSize: '15px', color: 'rgba(255, 255, 255, 1)' }}
+                      >
+                        Contact Details
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        {/* "Edit" Button */}
+                        {canEdit ? (
+                          <ButtonBase
+                            sx={{
+                              display: 'inline-block',
+                              backgroundColor: 'transparent',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                              },
+                            }}
+                            onClick={() => handleActionPermissionCheck('edit')}
+                          >
+                            <Typography variant="body2" sx={{ fontSize: '14px', color: '#fff' }}>
+                              Edit
+                            </Typography>
+                          </ButtonBase>
+                        ) : (
+                          <Typography variant="body2" sx={{ fontSize: '14px', color: '#aaa' }}>
+                            Edit (Permission Denied)
+                          </Typography>
+                        )}
+
+                        {/* "Add New Contact" Button */}
+                        {canAddContact ? (
+                          <ButtonBase
+                            sx={{
+                              display: 'inline-block',
+                              backgroundColor: 'transparent',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                              },
+                            }}
+                            onClick={() => handleActionPermissionCheck('addContact')}
+                          >
+                            <Typography variant="body2" sx={{ fontSize: '14px', color: '#fff' }}>
+                              Add New Contact
+                            </Typography>
+                          </ButtonBase>
+                        ) : (
+                          <Typography variant="body2" sx={{ fontSize: '14px', color: '#aaa' }}>
+                            Add New Contact (Permission Denied)
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                    <Box sx={{ padding: '0 22px', position: 'relative', paddingTop: '12px' }}>
+                      <Grid container spacing={3}>
+                        {/* First Row */}
+                        <Grid item xs={6}>
                           <Typography
-                            variant="p"
+                            variant="span"
                             sx={{
                               fontSize: '14px',
-                              marginBottom: '30px',
-                              color: 'rgba(107, 119, 154, 1)',
-                              marginLeft: '5px',
+                              display: 'block',
+                              color: 'rgba(171, 180, 207, 1)',
                             }}
+                          >
+                            Region
+                          </Typography>
+                          <Typography
+                            variant="p"
+                            sx={{ fontSize: '14px', color: 'rgba(107, 119, 154, 1)' }}
+                          >
+                            {contact[0]?.region || 'No Region'}
+                          </Typography>
+                        </Grid>
+
+                        <Grid item xs={6}>
+                          <Typography
+                            variant="span"
+                            sx={{
+                              fontSize: '14px',
+                              display: 'block',
+                              color: 'rgba(171, 180, 207, 1)',
+                            }}
+                          >
+                            Department
+                          </Typography>
+                          <Typography
+                            variant="p"
+                            sx={{ fontSize: '14px', color: 'rgba(107, 119, 154, 1)' }}
+                          >
+                            {contact[0]?.department || 'No Department'}
+                          </Typography>
+                        </Grid>
+
+                        {/* Second Row */}
+                        <Grid item xs={6}>
+                          <Typography
+                            variant="span"
+                            sx={{
+                              fontSize: '14px',
+                              display: 'block',
+                              color: 'rgba(171, 180, 207, 1)',
+                            }}
+                          >
+                            Responsibilities
+                          </Typography>
+                          <Typography
+                            variant="p"
+                            sx={{ fontSize: '14px', color: 'rgba(107, 119, 154, 1)' }}
+                          >
+                            {contact[0]?.responsibilities || 'No Responsibilities'}
+                          </Typography>
+                        </Grid>
+
+                        <Grid item xs={6}>
+                          <Typography
+                            variant="span"
+                            sx={{
+                              fontSize: '14px',
+                              display: 'block',
+                              color: 'rgba(171, 180, 207, 1)',
+                            }}
+                          >
+                            Reports To
+                          </Typography>
+                          <Typography
+                            variant="p"
+                            sx={{ fontSize: '14px', color: 'rgba(107, 119, 154, 1)' }}
                           >
                             {contact[0]?.reports_to || 'No Report'}
                           </Typography>
-                        </Typography>
+                        </Grid>
                       </Grid>
-                    </Grid>
+                    </Box>
                   </Box>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Grid container spacing={2}>
-                      <Grid item sx={12}>
-                        <Typography
-                          variant="span"
-                          sx={{
-                            fontSize: '14px',
-                            display: 'block',
-                            color: 'rgba(171, 180, 207, 1)',
-                          }}
-                        >
-                          Their Reports:
-                          <Typography
-                            variant="p"
+                </Grid>
+                <Grid item xs={3} md={3}>
+                  <Card
+                    sx={{ padding: '5px 15px 15px 15px', marginBottom: '20px', minHeight: '180px' }}
+                  >
+                    <Grid item xs={12}>
+                      <Typography
+                        sx={{ color: 'rgba(24, 35, 61, 1)', fontSize: '14px' }}
+                        variant="h6"
+                        gutterBottom
+                      >
+                        Follow up Again
+                      </Typography>
+                      {/* <TextField
+                    sx={{ backgroundColor: '#fff', outline: 'none' }}
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="Enter Follow-up Details"
+                    value={followUpDetails}
+                    onChange={(e) => setFollowUpDetails(e.target.value)}
+                    margin="normal"
+                    disabled={!canAddNote}
+                  /> */}
+                      <Grid
+                        container
+                        sx={{ marginTop: '10px' }}
+                        spacing={2}
+                        justifyContent="center"
+                      >
+                        <Grid item>
+                          <Box sx={{ display: 'flex', alignItems: 'center', marginTop: '-10px' }}>
+                            <DatePicker
+                              label="Follow-Up Date"
+                              value={selectedDate}
+                              onChange={(newValue) => setSelectedDate(newValue)}
+                              renderInput={(params) => <TextField {...params} />}
+                              disabled={!canAddNote} // Disable date picker if user lacks access
+                            />
+                          </Box>
+                        </Grid>
+                        <Grid item>
+                          <Button
                             sx={{
                               fontSize: '14px',
-                              marginBottom: '30px',
-                              color: 'rgba(107, 119, 154, 1)',
-                              marginLeft: '5px',
+                              fontWeight: '400',
+                              borderRadius: '3px',
+                              backgroundColor: !canAddNote
+                                ? 'rgba(0, 0, 0, 0.26)'
+                                : 'rgba(75, 121, 247, 1)',
+                              paddingInline: '25px',
+                              color: !canAddNote ? '#a1a1a1' : '#fff',
                             }}
+                            variant="contained"
+                            color="success"
+                            onClick={handleFollowUpDate}
+                            disabled={!canAddNote}
                           >
-                            {contact[0]
-                              ? `${contact[0].matched_client_name || 'No Report'} - ${
-                                  contact[0].matched_title || 'No Title'
-                                }`
-                              : 'No Their Reports'}
-                          </Typography>
-                        </Typography>
+                            Save
+                          </Button>
+                        </Grid>
                       </Grid>
                     </Grid>
-                  </Box>
-                </Box>
-              </Box>
-              <Grid item xs={12} md={12} mt={4}>
+                  </Card>
+
+                  {/* Dialog for adding the award */}
+                  <Dialog open={openDialog} onClose={handleClose}>
+                    <DialogTitle>Add Award</DialogTitle>
+                    <DialogContent>
+                      {/* Manager Name  */}
+                      <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Manager Name"
+                        type="text"
+                        fullWidth
+                        value={manager}
+                        onChange={(e) => setManager(e.target.value)}
+                      />
+                      {/* Award Title Field */}
+                      <TextField
+                        margin="dense"
+                        label="Award Title"
+                        type="text"
+                        fullWidth
+                        value={awardTitle}
+                        onChange={(e) => setAwardTitle(e.target.value)}
+                      />
+                      {/* Award Field */}
+                      <TextField
+                        margin="dense"
+                        label="Award"
+                        type="text"
+                        fullWidth
+                        value={award}
+                        onChange={handleAwardChange}
+                      />
+                      <Typography
+                        variant="body2"
+                        sx={{ color: 'text.secondary', mt: 1, fontSize: '10px' }}
+                      >
+                        Maximum 255 characters
+                      </Typography>
+                      {/* Sales Representative Name Field */}
+                      <FormControl fullWidth sx={{ marginTop: '2px' }}>
+                        <InputLabel id="sales-rep-label">Sales Representative</InputLabel>
+                        <Select
+                          labelId="sales-rep-label"
+                          value={selectedSalesRep || ''}
+                          onChange={(e) => setSelectedSalesRep(e.target.value)}
+                          renderValue={(selected) => selected || 'Select Sales Representative'}
+                        >
+                          {salesReps.map((rep) => (
+                            <MenuItem key={rep.id} value={rep.name}>
+                              <Checkbox checked={selectedSalesRep === rep.name} />
+                              <ListItemText primary={rep.name} />
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      {/* Amount in Dollars Field */}
+                      <TextField
+                        margin="dense"
+                        label="Amount (Dollars)"
+                        type="number"
+                        fullWidth
+                        value={amountDollars}
+                        onChange={(e) => setAmountDollars(e.target.value)}
+                      />
+                      <Typography
+                        variant="body2"
+                        sx={{ color: 'text.secondary', mt: 1, fontSize: '10px' }}
+                      >
+                        Enter a valid amount in dollars
+                      </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                      <Button onClick={handleClose} color="secondary">
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSave} color="primary">
+                        Save
+                      </Button>
+                    </DialogActions>
+                  </Dialog>
+                </Grid>
+              </Grid>
+              <Grid container sx={{ position: 'relative', height: 'calc(260px + 210px)' }}>
                 <Typography
-                  sx={{ fontSize: '8px', color: 'rgba(24, 35, 61, 1)', marginBottom: '15px' }}
+                  sx={{
+                    fontSize: '8px',
+                    color: 'rgba(24, 35, 61, 1)',
+                    marginBottom: '15px',
+                    mt: 5,
+                  }}
                   variant="h6"
                   gutterBottom
                 >
@@ -1095,11 +1519,16 @@ export default function CompanyContactDetails() {
                 <TableContainer
                   component={Paper}
                   sx={{
-                    maxHeight: 390,
+                    maxHeight: 400,
+                    minHeight: 400,
                     overflowY: 'auto',
+                    height: '100%',
+                    width: '100%',
                   }}
                 >
-                  <Table sx={{ borderCollapse: 'separate', borderSpacing: '0 10px' }}>
+                  <Table
+                    sx={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 10px' }}
+                  >
                     <TableHead>
                       <TableRow>
                         <TableCell
@@ -1144,17 +1573,6 @@ export default function CompanyContactDetails() {
                         >
                           Description
                         </TableCell>
-                        {/* <TableCell
-                          sx={{
-                            backgroundColor: 'rgba(224, 237, 250, 1)',
-                            color: 'rgba(24, 35, 61, 1)',
-                            fontSize: '14px', // Smaller font size
-                            padding: '8px', // Reduced padding
-                            borderRadius: '0 10px 10px 0',
-                          }}
-                        >
-                          File
-                        </TableCell> */}
                       </TableRow>
                     </TableHead>
                     <TableBody className="Table-custom">
@@ -1170,10 +1588,6 @@ export default function CompanyContactDetails() {
                           <TableCell sx={{ padding: '8px', fontSize: '14px' }}>
                             {contact[0]?.client_first_name}
                           </TableCell>
-                          {/* Follow-up Date */}
-                          {/* <TableCell sx={{ padding: '8px', fontSize: '14px' }}>
-                            {row.follow_up_date || 'N/A'}
-                          </TableCell> */}
                           <TableCell sx={{ padding: '8px', fontSize: '14px' }}>
                             {row.created_at
                               ? new Intl.DateTimeFormat('en-US', {
@@ -1190,28 +1604,24 @@ export default function CompanyContactDetails() {
 
                           {/* Description/Details */}
                           <TableCell sx={{ padding: '8px', fontSize: '14px', lineHeight: '1.2' }}>
-                            {row.details || 'No details provided'}
-                          </TableCell>
-                          {/* File Download Link */}
-                          {/* <TableCell sx={{ padding: '8px', fontSize: '14px' }}>
-                            {row.file_path ? (
-                              <Link
-                                sx={{
-                                  color: '#007BFF',
-                                  fontWeight: '700',
-                                  fontSize: '14px',
-                                }}
-                                href={row.file_path}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                underline="none"
-                              >
-                                Download File
-                              </Link>
+                            {row.details && row.details.length > 50 ? (
+                              <>
+                                {row.details.substring(0, 50)}...
+                                <Link
+                                  sx={{
+                                    color: 'rgba(15, 160, 241, 1)',
+                                    cursor: 'pointer',
+                                    marginLeft: '5px',
+                                  }}
+                                  onClick={() => handleDetailClick(row.details)}
+                                >
+                                  Read More
+                                </Link>
+                              </>
                             ) : (
-                              'No file attached'
+                              row.details || 'No details provided'
                             )}
-                          </TableCell> */}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1258,152 +1668,6 @@ export default function CompanyContactDetails() {
                   >
                     Save
                   </Button>
-                </Grid>
-              </Card>
-            </Grid>
-            <Grid item xs={3} md={3}>
-              <Card sx={{ padding: '5px 15px 15px 15px', marginBottom: '20px' }}>
-                <Grid item xs={12}>
-                  <Typography
-                    sx={{ color: 'rgba(24, 35, 61, 1)', fontSize: '14px' }}
-                    variant="h6"
-                    gutterBottom
-                  >
-                    Follow up Again
-                  </Typography>
-                  {/* <TextField
-                    sx={{ backgroundColor: '#fff', outline: 'none' }}
-                    fullWidth
-                    multiline
-                    rows={3}
-                    label="Enter Follow-up Details"
-                    value={followUpDetails}
-                    onChange={(e) => setFollowUpDetails(e.target.value)}
-                    margin="normal"
-                    disabled={!canAddNote}
-                  /> */}
-                  <Grid container sx={{ marginTop: '10px' }} spacing={2} justifyContent="center">
-                    <Grid item>
-                      <Box sx={{ display: 'flex', alignItems: 'center', marginTop: '-10px' }}>
-                        <DatePicker
-                          label="Follow-Up Date"
-                          value={selectedDate}
-                          onChange={(newValue) => setSelectedDate(newValue)}
-                          renderInput={(params) => <TextField {...params} />}
-                          disabled={!canAddNote} // Disable date picker if user lacks access
-                        />
-                      </Box>
-                    </Grid>
-                    <Grid item>
-                      <Button
-                        sx={{
-                          fontSize: '14px',
-                          fontWeight: '400',
-                          borderRadius: '3px',
-                          backgroundColor: !canAddNote
-                            ? 'rgba(0, 0, 0, 0.26)'
-                            : 'rgba(75, 121, 247, 1)',
-                          paddingInline: '25px',
-                          color: !canAddNote ? '#a1a1a1' : '#fff',
-                        }}
-                        variant="contained"
-                        color="success"
-                        onClick={handleFollowUpDate}
-                        disabled={!canAddNote}
-                      >
-                        Save
-                      </Button>
-                    </Grid>
-                  </Grid>
-                </Grid>
-                <Grid item xs={12} mt={4}>
-                  <Grid container sx={{ marginTop: '10px' }} spacing={2} justifyContent="center">
-                    {selectedFileName && (
-                      <Grid item>
-                        <Typography
-                          sx={{
-                            fontSize: '14px',
-                            color: '#333',
-                            marginTop: '8px',
-                          }}
-                        >
-                          Selected File: {selectedFileName}
-                          <IconButton
-                            onClick={handleRemoveFile}
-                            sx={{
-                              marginLeft: '8px',
-                              padding: 0,
-                            }}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="16"
-                              height="16"
-                              fill="currentColor"
-                              className="bi bi-x-circle"
-                              viewBox="0 0 16 16"
-                            >
-                              <path d="M16 8a8 8 0 1 0-8 8 8 8 0 0 0 8-8ZM8 1a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm4.146 5.854a.5.5 0 0 0-.708-.708L8 9.293 4.854 6.146a.5.5 0 1 0-.708.708L7.293 10l-3.146 3.146a.5.5 0 0 0 .708.708L8 10.707l3.146 3.146a.5.5 0 0 0 .708-.708L8.707 10l3.146-3.146Z" />
-                            </svg>
-                          </IconButton>
-                        </Typography>
-                      </Grid>
-                    )}
-                    <Grid item>
-                      <Button
-                        sx={{
-                          fontSize: '14px',
-                          fontWeight: '400',
-                          borderRadius: '3px',
-                          backgroundColor: !canAddNote
-                            ? 'rgba(0, 0, 0, 0.26)'
-                            : 'rgba(0, 166, 109, 1)',
-                          paddingInline: '25px',
-                          textTransform: 'none',
-                        }}
-                        variant="contained"
-                        component="label"
-                        disabled={!canAddNote} // Disable button if user lacks access
-                      >
-                        Upload File
-                        <input type="file" hidden onChange={handleFileChange} />
-                      </Button>
-                      <Typography
-                        sx={{
-                          color: 'rgba(24, 35, 61, 0.6)', // Light color
-                          fontSize: '12px',
-                          fontWeight: '300',
-                          mt: '6px',
-                        }}
-                        variant="body2"
-                        gutterBottom
-                      >
-                        Upload File (Supported formats: JPG, JPEG, PNG, PDF, DOC, DOCX - Max size:
-                        2MB)
-                      </Typography>
-                    </Grid>
-                    <Grid item>
-                      <Button
-                        sx={{
-                          fontSize: '14px',
-                          fontWeight: '400',
-                          borderRadius: '3px',
-                          backgroundColor: !canAddNote
-                            ? 'rgba(0, 0, 0, 0.26)'
-                            : 'rgba(75, 121, 247, 1)',
-                          paddingInline: '25px',
-                          color: !canAddNote ? '#a1a1a1' : '#fff',
-                          left: '4px',
-                        }}
-                        variant="contained"
-                        color="success"
-                        onClick={handleFileUpload}
-                        disabled={!canAddNote}
-                      >
-                        Save
-                      </Button>
-                    </Grid>
-                  </Grid>
                 </Grid>
               </Card>
               {/* Project Sales Award History */}
@@ -1512,108 +1776,25 @@ export default function CompanyContactDetails() {
                     </Box>
                   ))}
                 </CardContent>
-              </Card>
-
-              <div>
-                {(role === 'Sales Manager' || role === 'Admin') && (
-                  <Button
-                    sx={{ marginLeft: '10px', marginTop: '10px' }}
-                    variant="contained"
-                    size="small"
-                    onClick={() => handleOpen(null)}
-                  >
-                    Add Awards
-                  </Button>
-                )}
-              </div>
-              {/* Dialog for adding the award */}
-              <Dialog open={openDialog} onClose={handleClose}>
-                <DialogTitle>Add Award</DialogTitle>
-                <DialogContent>
-                  {/* Manager Name  */}
-                  <TextField
-                    autoFocus
-                    margin="dense"
-                    label="Manager Name"
-                    type="text"
-                    fullWidth
-                    value={manager}
-                    onChange={(e) => setManager(e.target.value)}
-                  />
-                  {/* Award Title Field */}
-                  <TextField
-                    margin="dense"
-                    label="Award Title"
-                    type="text"
-                    fullWidth
-                    value={awardTitle}
-                    onChange={(e) => setAwardTitle(e.target.value)}
-                  />
-                  {/* Award Field */}
-                  <TextField
-                    margin="dense"
-                    label="Award"
-                    type="text"
-                    fullWidth
-                    value={award}
-                    onChange={handleAwardChange}
-                  />
-                  <Typography
-                    variant="body2"
-                    sx={{ color: 'text.secondary', mt: 1, fontSize: '10px' }}
-                  >
-                    Maximum 255 characters
-                  </Typography>
-                  {/* Sales Representative Name Field */}
-                  <FormControl fullWidth sx={{ marginTop: '2px' }}>
-                    <InputLabel id="sales-rep-label">Sales Representative</InputLabel>
-                    <Select
-                      labelId="sales-rep-label"
-                      value={selectedSalesRep || ''}
-                      onChange={(e) => setSelectedSalesRep(e.target.value)}
-                      renderValue={(selected) => selected || 'Select Sales Representative'}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  {(role === 'Sales Manager' || role === 'Admin') && (
+                    <Button
+                      sx={{
+                        marginLeft: '75px',
+                        marginTop: '10px',
+                        borderRadius: '3px',
+                        padding: '17px 10px',
+                      }}
+                      variant="contained"
+                      size="small"
+                      onClick={() => handleOpen(null)}
                     >
-                      {salesReps.map((rep) => (
-                        <MenuItem key={rep.id} value={rep.name}>
-                          <Checkbox checked={selectedSalesRep === rep.name} />
-                          <ListItemText primary={rep.name} />
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  {/* Amount in Dollars Field */}
-                  <TextField
-                    margin="dense"
-                    label="Amount (Dollars)"
-                    type="number"
-                    fullWidth
-                    value={amountDollars}
-                    onChange={(e) => setAmountDollars(e.target.value)}
-                  />
-                  <Typography
-                    variant="body2"
-                    sx={{ color: 'text.secondary', mt: 1, fontSize: '10px' }}
-                  >
-                    Enter a valid amount in dollars
-                  </Typography>
-                </DialogContent>
-                <DialogActions>
-                  <Button onClick={handleClose} color="secondary">
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSave} color="primary">
-                    Save
-                  </Button>
-                </DialogActions>
-              </Dialog>
+                      Add Awards
+                    </Button>
+                  )}
+                </div>
+              </Card>
             </Grid>
-          </Grid>
-        </Box>
-        <Box sx={{ flexGrow: 1, marginTop: '20px' }}>
-          <Grid container spacing={2}>
-            {/* Contact History Table */}
-
-            {/* Follow-up Again Section */}
           </Grid>
         </Box>
       </Container>{' '}
@@ -1626,6 +1807,22 @@ export default function CompanyContactDetails() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose} color="secondary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={openDetailDialog}
+        onClose={() => setOpenDetailDialog(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Details</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: '14px', lineHeight: '1.5' }}>{detailText}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDetailDialog(false)} color="primary">
             Close
           </Button>
         </DialogActions>
@@ -1645,6 +1842,10 @@ const Backdrop = React.forwardRef((props, ref) => {
 
 Backdrop.propTypes = {
   open: PropTypes.bool,
+};
+
+CompanyContactDetails.propTypes = {
+  moduleName: PropTypes.string,
 };
 
 const blue = {

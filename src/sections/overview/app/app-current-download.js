@@ -1,8 +1,8 @@
 import PropTypes from 'prop-types';
 // @mui
-import { useTheme, styled } from '@mui/material/styles';
-import CardHeader from '@mui/material/CardHeader';
 import Card from '@mui/material/Card';
+import CardHeader from '@mui/material/CardHeader';
+import { styled, useTheme } from '@mui/material/styles';
 // utils
 import { fNumber } from 'src/utils/format-number';
 // components
@@ -53,7 +53,7 @@ export default function AppCurrentDownload({ title, subheader, chart, ...other }
     tooltip: {
       fillSeriesColor: false,
       y: {
-        formatter: (value) => fNumber(value),
+        formatter: (value) => `$${fNumber(value)}`,
         title: {
           formatter: (seriesName) => `${seriesName}`,
         },

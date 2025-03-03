@@ -13,18 +13,11 @@ import Grid from '@mui/material/Unstable_Grid2';
 // hooks
 // utils
 // assets
-import {
-  Button,
-  Checkbox,
-  FormControl,
-  InputLabel,
-  ListItemText,
-  MenuItem,
-  Select,
-} from '@mui/material';
+import { Checkbox, FormControl, InputLabel, ListItemText, MenuItem, Select } from '@mui/material';
 import { countries } from 'src/assets/data';
 // components
 import imageCompression from 'browser-image-compression';
+import PropTypes from 'prop-types';
 import FormProvider, {
   RHFAutocomplete,
   RHFTextField,
@@ -33,12 +26,13 @@ import FormProvider, {
 import Iconify from 'src/components/iconify';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 
 // ----------------------------------------------------------------------
 
 const permissionssName = ['Full Access', 'Partial Access', 'Limited', 'View Only'];
 
-export default function AccountGeneral() {
+export default function AccountGeneral({ moduleName }) {
   const { id } = useParams();
   const { enqueueSnackbar } = useSnackbar();
 
@@ -62,7 +56,17 @@ export default function AccountGeneral() {
 
   const [currentPage, setCurrentPage] = useState(1);
 
-  const itemsPerPage = 10;
+  const [officePhone1, setOfficePhone1] = useState('');
+
+  const [officePhone2, setOfficePhone2] = useState('');
+
+  const [cellPhone1, setCellPhone1] = useState('');
+
+  const [cellPhone2, setCellPhone2] = useState('');
+
+  const [personalEmail, setPersonalEmail] = useState('');
+
+  const itemsPerPage = 100;
 
   useEffect(() => {
     const fetchCompanyDetails = async () => {
@@ -108,6 +112,10 @@ export default function AccountGeneral() {
     cell_phone2: Yup.string().nullable(),
     office_email: Yup.string().nullable().email('Office email must be a valid email address'),
     personal_email: Yup.string().nullable().email('Personal email must be a valid email address'),
+    location_address3: Yup.string().nullable(),
+    region: Yup.string().nullable(),
+    department: Yup.string().nullable(),
+    business_fax: Yup.string().nullable(),
     photo_url: Yup.mixed().nullable().required('Avatar is required'),
     their_report: Yup.string().nullable,
   });
@@ -124,8 +132,10 @@ export default function AccountGeneral() {
       special_notes: '',
       location_address1: '',
       location_address2: '',
+      location_address3: '',
       city: '',
       country: '',
+      region: '',
       state: '',
       zip: '',
       office_phone1: '',
@@ -135,11 +145,13 @@ export default function AccountGeneral() {
       office_email: '',
       personal_email: '',
       their_report: '',
+      department: '',
+      business_fax: '',
       photo_url: '',
     },
   });
 
-  const { setValue, handleSubmit, watch, control } = methods;
+  const { setValue, watch, control } = methods;
 
   const values = watch();
 
@@ -156,16 +168,24 @@ export default function AccountGeneral() {
       setValue('special_notes', company.special_notes);
       setValue('location_address1', company.location_address1);
       setValue('location_address2', company.location_address2);
+      setValue('location_address3', company.location_address3);
       setValue('city', company.city);
       setValue('country', company.country);
+      setValue('region', company.region);
       setValue('state', company.state);
       setValue('office_phone1', company.office_phone1);
+      setOfficePhone1(company.office_phone1);
       setValue('office_phone2', company.office_phone2);
+      setOfficePhone2(company.office_phone2);
       setValue('cell_phone1', company.cell_phone1);
+      setCellPhone1(company.cell_phone1);
       setValue('cell_phone2', company.cell_phone2);
+      setCellPhone2(company.cell_phone2);
       setValue('office_email', company.office_email);
       setValue('personal_email', company.personal_email);
       setValue('zip', company.zip);
+      setValue('department', company.department);
+      setValue('business_fax', company.business_fax);
       setValue('photo_url', company.photo_url);
       setValue(
         'their_report',
@@ -179,6 +199,13 @@ export default function AccountGeneral() {
   }, [companyDetails, setValue]);
 
   const handleSaveChanges = async (data) => {
+    logActivity(
+      'User edit a compnay contact detail',
+      moduleName || 'COMPANY CONTACT DETAILS PAGE',
+      {
+        identification: companyDetails[0].client_first_name,
+      }
+    );
     const formData = new FormData();
 
     // Append all fields except photoURL
@@ -191,15 +218,19 @@ export default function AccountGeneral() {
     formData.append('special_notes', data.special_notes);
     formData.append('location_address1', data.location_address1);
     formData.append('location_address2', data.location_address2);
+    formData.append('location_address3', data.location_address3);
     formData.append('city', data.city);
     formData.append('country', data.country);
+    formData.append('business_fax', data.business_fax);
+    formData.append('department', data.department);
+    formData.append('region', data.region);
     formData.append('zip', data.zip);
-    formData.append('office_phone1', data.office_phone1);
-    formData.append('office_phone2', data.office_phone2);
-    formData.append('cell_phone1', data.cell_phone1);
-    formData.append('cell_phone2', data.cell_phone2);
+    formData.append('office_phone1', officePhone1);
+    formData.append('office_phone2', officePhone2);
+    formData.append('cell_phone1', cellPhone1);
+    formData.append('cell_phone2', cellPhone2);
     formData.append('office_email', data.office_email);
-    formData.append('personal_email', data.personal_email);
+    formData.append('personal_email', personalEmail || data.personal_email || '');
     if (data.photo_url && data.photo_url instanceof File) {
       formData.append('photo_url', data.photo_url);
     }
@@ -234,8 +265,29 @@ export default function AccountGeneral() {
       setIsEditable(false);
     } catch (error) {
       console.error('Error details:', error.response ? error.response.data : error);
-      enqueueSnackbar('Error saving company details', { variant: 'error' });
+
+      let errorMessage = 'Error saving company details';
+
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response && error.response.data && typeof error.response.data === 'string') {
+        errorMessage = error.response.data;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      enqueueSnackbar(errorMessage, { variant: 'error' });
     }
+  };
+
+  const handleInputChange = (e) => {
+    setPersonalEmail(e.target.value);
+  };
+
+  const handlePhoneChange = (setter) => (event) => {
+    const input = event.target.value;
+    const formatted = input && !input.startsWith('+') ? `+${input}` : input;
+    setter(formatted);
   };
 
   const onSubmit = (data) => {
@@ -360,17 +412,9 @@ export default function AccountGeneral() {
               }}
             >
               <RHFTextField name="company_name" label="Company Name" disabled={!isEditable} />
-              <RHFTextField
-                name="client_first_name"
-                label="Client First Name"
-                disabled={!isEditable}
-              />
-              <RHFTextField
-                name="client_last_name"
-                label="Client Last Name"
-                disabled={!isEditable}
-              />
-              <RHFTextField name="title" label="Title" disabled={!isEditable} />
+              <RHFTextField name="client_first_name" label="First Name" disabled={!isEditable} />
+              <RHFTextField name="client_last_name" label="Last Name" disabled={!isEditable} />
+              <RHFTextField name="title" label="Job Title" disabled={!isEditable} />
               <RHFTextField name="reports_to" label="Reports To" disabled={!isEditable} />
               {/* <RHFTextField name="their_report" label="There Report" disabled={!isEditable} /> */}
               <RHFTextField
@@ -379,17 +423,23 @@ export default function AccountGeneral() {
                 disabled={!isEditable}
               />
               <RHFTextField name="special_notes" label="Special Notes" disabled={!isEditable} />
+              <RHFTextField name="department" label="Department" disabled={!isEditable} />
               <RHFTextField
                 name="location_address1"
-                label="Location Address 1"
+                label="Business Street"
                 disabled={!isEditable}
               />
               <RHFTextField
                 name="location_address2"
-                label="Location Address 2"
+                label="Business Street 2"
                 disabled={!isEditable}
               />
-              <RHFTextField name="city" label="City" disabled={!isEditable} />
+              <RHFTextField
+                name="location_address3"
+                label="Business Stree 3"
+                disabled={!isEditable}
+              />
+              <RHFTextField name="city" label="Business City" disabled={!isEditable} />
               {!isEditable ? (
                 <RHFTextField
                   name="state"
@@ -400,42 +450,37 @@ export default function AccountGeneral() {
                 />
               ) : (
                 <FormControl fullWidth>
-                  <InputLabel>State/Province</InputLabel>
+                  <InputLabel>Business State</InputLabel>
                   <Select
                     multiple
                     value={selectedStates}
                     onChange={handleChange}
                     renderValue={(selected) => selected.join(', ')}
+                    MenuProps={{
+                      PaperProps: {
+                        style: {
+                          maxHeight: 300, // Set maximum height for the dropdown; adjust as needed
+                          overflowY: 'auto',
+                        },
+                      },
+                    }}
                   >
                     <MenuItem value="all">
                       <Checkbox checked={isAllSelected} />
                       <ListItemText primary="Select All" />
                     </MenuItem>
-
                     {currentItems.map((state) => (
                       <MenuItem key={state.name} value={state.name}>
                         <Checkbox checked={selectedStates.includes(state.name)} />
                         <ListItemText primary={`${state.name} (${state.country})`} />
                       </MenuItem>
                     ))}
-                    <Box display="flex" justifyContent="space-between" p={1}>
-                      <Button size="small" disabled={currentPage === 1} onClick={handlePrevPage}>
-                        Previous
-                      </Button>
-                      <Button
-                        size="small"
-                        disabled={currentPage === totalPages}
-                        onClick={handleNextPage}
-                      >
-                        Next
-                      </Button>
-                    </Box>
                   </Select>
                 </FormControl>
               )}
               <RHFAutocomplete
                 name="country"
-                label="Country"
+                label="Business Country/Region"
                 options={countries.map((country) => country.label)}
                 getOptionLabel={(option) => option}
                 renderOption={(props, option) => {
@@ -461,37 +506,54 @@ export default function AccountGeneral() {
                 }}
                 disabled={!isEditable}
               />
-              <RHFTextField name="zip" label="Zip/Code" disabled={!isEditable} />
+              <RHFTextField name="zip" label="Business Postal Code" disabled={!isEditable} />
+              <RHFTextField name="region" label="Region" disabled={!isEditable} />
               <RHFTextField
                 name="office_phone1"
-                label="Office Phone Number 1"
+                label="Business Phone"
                 placeholder="+1 234 567-8901"
+                value={officePhone1}
                 disabled={!isEditable}
+                onChange={handlePhoneChange(setOfficePhone1)}
               />
+
               <RHFTextField
                 name="office_phone2"
-                label="Office Phone Number 2"
+                label="Business Phone 2"
                 placeholder="+1 234 567-8901"
+                value={officePhone2}
                 disabled={!isEditable}
+                onChange={handlePhoneChange(setOfficePhone2)}
               />
+
               <RHFTextField
                 name="cell_phone1"
-                label="Cell Phone Number 1"
+                label="Mobile Phone"
                 placeholder="+1 234 567-8901"
+                value={cellPhone1}
                 disabled={!isEditable}
+                onChange={handlePhoneChange(setCellPhone1)}
               />
+
               <RHFTextField
                 name="cell_phone2"
-                label="Cell Phone Number 2"
+                label="Other Phone"
                 placeholder="+1 234 567-8901"
+                value={cellPhone2}
                 disabled={!isEditable}
+                onChange={handlePhoneChange(setCellPhone2)}
               />
               <RHFTextField
-                name="office_email"
-                label="Office Email address"
+                name="personal_email"
+                label="Personal Email Address"
+                value={personalEmail || methods.watch('personal_email', '')}
+                onChange={(e) => {
+                  setPersonalEmail(e.target.value);
+                  methods.setValue('personal_email', e.target.value);
+                }}
                 disabled={!isEditable}
               />
-              <RHFTextField name="personal_email" label="personal_email" disabled={!isEditable} />
+              <RHFTextField name="business_fax" label="Business Fax" disabled={!isEditable} />
               <RHFTextField name="their_report" label="Their Reports" disabled={!isEditable} />
             </Box>
 
@@ -528,3 +590,7 @@ export default function AccountGeneral() {
     </FormProvider>
   );
 }
+
+AccountGeneral.propTypes = {
+  moduleName: PropTypes.string,
+};

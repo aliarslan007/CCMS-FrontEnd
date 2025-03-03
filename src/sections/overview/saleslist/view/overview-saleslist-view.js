@@ -1,6 +1,6 @@
 import isEqual from 'lodash/isEqual';
 import PropTypes from 'prop-types';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 // @mui
 import Box from '@mui/material/Box';
@@ -37,6 +37,7 @@ import TableHeadCustomContact from 'src/components/table/table-head-custom-conta
 //
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 //
 import { useAuth } from '../../../../auth/context/jwt/auth-context';
 import UserTableFiltersResult from '../../../user/user-table-filters-result';
@@ -73,7 +74,7 @@ const defaultFilters = {
 
 // ----------------------------------------------------------------------
 
-export default function OverviewSalesListView({ contactId, onFilters }) {
+export default function OverviewSalesListView({ contactId, onFilters, moduleName }) {
   const table = useTable();
 
   const settings = useSettingsContext();
@@ -112,8 +113,15 @@ export default function OverviewSalesListView({ contactId, onFilters }) {
 
   const [companyTypes, setCompanyTypes] = useState([]);
 
+  const logSentRef = useRef(false);
+
   useEffect(() => {
     const fetchUsers = async () => {
+      if (!logSentRef.current) {
+        const dynamicModuleName = moduleName || 'CLIENT COMPANIES';
+        logActivity('User view client companies', dynamicModuleName);
+        logSentRef.current = true;
+      }
       setLoading(true);
       try {
         const token = sessionStorage.getItem('authToken');
@@ -123,7 +131,7 @@ export default function OverviewSalesListView({ contactId, onFilters }) {
             Authorization: `Bearer ${token}`,
           },
         });
-      
+
         const companyArray = Object.values(response.data.data);
         const activeCompanies = companyArray.filter((company) => company.is_active !== 0);
         const uniqueCompanyTypes = [
@@ -140,7 +148,7 @@ export default function OverviewSalesListView({ contactId, onFilters }) {
     };
 
     fetchUsers();
-  }, []);
+  }, [moduleName]);
 
   // Handle inactive companies
   const handleMarkInactive = async () => {
@@ -163,6 +171,14 @@ export default function OverviewSalesListView({ contactId, onFilters }) {
         })),
       };
       await axiosInstance.patch(url, data);
+
+      const fullNames = selectedIds.map((user) => user.company_name).join(', ');
+
+      logActivity(
+        'User inactive a company',
+        moduleName || 'CLIENT COMPANIES',
+        { identification: fullNames }
+      );
       enqueueSnackbar('Selected Company marked as inactive', { variant: 'success' });
       setUsers((prevUsers) =>
         prevUsers.filter((user) => !selectedIds.map((s) => s.id).includes(user.id))
@@ -543,7 +559,7 @@ export default function OverviewSalesListView({ contactId, onFilters }) {
                       table.page * table.rowsPerPage + table.rowsPerPage
                     )
                     .map((row) => {
-                      console.log(); 
+                      console.log();
                       return (
                         <UserTableRows
                           key={row.id}
@@ -602,6 +618,7 @@ export default function OverviewSalesListView({ contactId, onFilters }) {
 OverviewSalesListView.propTypes = {
   contactId: PropTypes.number.isRequired,
   onFilters: PropTypes.func,
+  moduleName: PropTypes.string,
 };
 
 // ----------------------------------------------------------------------

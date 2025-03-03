@@ -1,10 +1,21 @@
-import { Avatar, Box, Card, CardContent, Typography } from '@mui/material';
+import {
+  Avatar,
+  Box,
+  Card,
+  CardContent,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Typography,
+} from '@mui/material';
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import OrganizationChart from 'react-orgchart';
 import 'react-orgchart/index.css';
-import { useNavigate } from 'react-router-dom';
-import axiosInstance from 'src/utils/axios';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useSnackbar } from 'src/components/snackbar';
+import axiosInstance, { endpoints } from 'src/utils/axios';
 import { paths } from '../../../routes/paths';
 import '../OrgChart.css';
 
@@ -41,6 +52,11 @@ const NodeComponent = ({ node, onAvatarClick }) => (
           sx={{
             width: 28,
             height: 28,
+            cursor: 'pointer', 
+            '&:hover': {
+              transform: 'scale(1.1)',
+              boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
+            },
           }}
           onClick={() => onAvatarClick(node.uuid, node)}
         />
@@ -93,74 +109,117 @@ NodeComponent.propTypes = {
 const OrgChartComponent = () => {
   const navigate = useNavigate();
   const [orgData, setOrgData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState('');
+  const { enqueueSnackbar } = useSnackbar();
+  const [userRole, setUserRole] = useState(null);
+  const { search } = useLocation();
 
-  const handleCompanyClick = (uuid) => {
-    navigate(paths.dashboard.user.companycontactdetails(uuid));
-  };
+  const queryParams = new URLSearchParams(search);
+  const encodedData = queryParams.get('data');
+  const companyIds = encodedData ? atob(encodedData) : null;
 
   useEffect(() => {
-    const fetchOrgData = async () => {
+    const fetchOrgChart = async () => {
       try {
-        const response = await axiosInstance.get('/api/organization-chart');
+        const response = await axiosInstance.get('/api/organization-chart', {
+          params: { company_id: companyIds },
+        });
         setOrgData(response.data);
-      } catch (err) {
-        setError('Failed to fetch organization chart data');
-        console.error(err);
-      } finally {
-        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching organization chart:', error);
       }
     };
 
-    fetchOrgData();
+    if (companyIds) {
+      fetchOrgChart();
+    }
+  }, [companyIds]);
+
+  const handleCompanyClick = (uuid) => {
+    if (userRole === 'Admin') {
+      navigate(paths.dashboard.user.companycontactdetails(uuid));
+    }
+  };
+
+  useEffect(() => {
+    const storedRole = sessionStorage.getItem('userRole');
+    setUserRole(storedRole);
   }, []);
 
-  if (loading)
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', padding: 2 }}>
-        <Typography>Loading organization chart...</Typography>
-      </Box>
-    );
+  const fetchCompanies = async () => {
+    try {
+      const token = sessionStorage.getItem('authToken');
+      const response = await axiosInstance.get(endpoints.all.company, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCompanies(response.data);
+    } catch (err) {
+      console.error('Failed to fetch companies:', err);
+    }
+  };
 
-  if (error)
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', padding: 2, color: 'error.main' }}>
-        <Typography>{error}</Typography>
-      </Box>
-    );
+  if (companies.length === 0) fetchCompanies();
+
+  const handleCompanyChange = async (event) => {
+    const companyId = event.target.value;
+    setSelectedCompany(companyId);
+
+    try {
+      const response = await axiosInstance.get('/api/organization-chart', {
+        params: { company_id: companyId },
+      });
+      setOrgData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch organization chart:', error);
+      enqueueSnackbar(' No organization chart data available', { variant: 'error' });
+    }
+  };
 
   return (
-    <Box
-      sx={{
-        width: '100%',
-        overflowX: 'auto',
-        backgroundColor: '#fff',
-        padding: 1,
-      }}
-    >
-      <Typography sx={{ fontFamily: 'sans-serif', color: 'gray',fontSize:'12px' }}>
-        Click any avatar to view contact details.
-      </Typography>
-      <style>{}</style>
+    <Box sx={{ width: '100%', overflowX: 'auto', backgroundColor: '#fff', padding: 1 }}>
+      <Box sx={{ mb: 2, maxWidth: 200, mt: 2 }}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Select Company</InputLabel>
+          <Select
+            value={selectedCompany}
+            onChange={handleCompanyChange}
+            label="Select Company"
+            sx={{ minWidth: 200 }}
+          >
+            {companies.map((company) => (
+              <MenuItem key={company.id} value={company.id}>
+                {company.company_name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
       <Box
         sx={{
-          minWidth: '1200px', // Increased to accommodate spacing
+          minWidth: '1200px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           gap: '40px',
         }}
       >
-        <div className="orgchart-container">
-          <OrganizationChart
-            tree={orgData}
-            NodeComponent={(nodeProps) => (
-              <NodeComponent {...nodeProps} onAvatarClick={handleCompanyClick} />
-            )}
-            className="orgchart-sibling-nodes"
-          />
-        </div>
+        {orgData ? (
+          <div className="orgchart-container">
+            <OrganizationChart
+              tree={orgData}
+              NodeComponent={(nodeProps) => (
+                <NodeComponent {...nodeProps} onAvatarClick={handleCompanyClick} />
+              )}
+              className="orgchart-sibling-nodes"
+            />
+          </div>
+        ) : (
+          <Typography sx={{ mt: 4, color: 'text.secondary' }}>
+            Select any company from dropdown to view organization chart
+          </Typography>
+        )}
       </Box>
     </Box>
   );

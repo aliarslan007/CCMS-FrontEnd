@@ -1,14 +1,14 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import PropTypes from 'prop-types';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useParams } from 'react-router-dom';
 import * as Yup from 'yup';
 // @mui
 import LoadingButton from '@mui/lab/LoadingButton';
 import {
-  Button,
   Checkbox,
+  CircularProgress,
   FormControl,
   InputLabel,
   ListItemText,
@@ -35,11 +35,11 @@ import FormProvider, {
 import Iconify from 'src/components/iconify';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 
 // ----------------------------------------------------------------------
 
-const permissionssName = ['Full Access', 'Partial Access', 'Limited', 'View Only'];
-export default function UserCompanyContactEditForm() {
+export default function UserCompanyContactEditForm({ moduleName }) {
   const { id } = useParams();
   const router = useRouter();
 
@@ -69,7 +69,17 @@ export default function UserCompanyContactEditForm() {
 
   const [currentPage, setCurrentPage] = useState(1);
 
-  const itemsPerPage = 10;
+  const [officePhone1, setOfficePhone1] = useState('');
+
+  const [officePhone2, setOfficePhone2] = useState('');
+
+  const [cellPhone1, setCellPhone1] = useState('');
+
+  const [cellPhone2, setCellPhone2] = useState('');
+
+  const itemsPerPage = 100;
+
+  const logSentRef = useRef(false);
 
   // Fetch the companies for Admin and User{Only those companies are fetched which are related to that user}
   useEffect(() => {
@@ -156,7 +166,11 @@ export default function UserCompanyContactEditForm() {
     cell_phone2: Yup.string().nullable(),
     office_email: Yup.string().nullable().email('Office email must be a valid email address'),
     personal_email: Yup.string().nullable().email('Personal email must be a valid email address'),
-    photo_url: Yup.string().nullable().url('Photo URL must be a valid URL'),
+    location_address3: Yup.string().nullable(),
+    region: Yup.string().nullable(),
+    department: Yup.string().nullable(),
+    business_fax: Yup.string().nullable(),
+    photo_url: Yup.string().nullable(),
     assigned_agent: Yup.string(),
     access: Yup.string(),
     their_report: Yup.string().nullable().url(),
@@ -173,8 +187,10 @@ export default function UserCompanyContactEditForm() {
       special_notes: '',
       location_address1: '',
       location_address2: '',
+      location_address3: '',
       city: '',
       country: '',
+      region: '',
       state: '',
       zip: '',
       office_phone1: '',
@@ -187,6 +203,8 @@ export default function UserCompanyContactEditForm() {
       assigned_agent: '',
       access: '',
       their_report: '',
+      department: '',
+      business_fax: '',
     },
   });
 
@@ -195,6 +213,12 @@ export default function UserCompanyContactEditForm() {
   const values = watch();
 
   const handleSaveChanges = async (data) => {
+    if (!logSentRef.current) {
+      const dynamicModuleName = moduleName || 'CLIENT ACCOUNT MANAGEMENT';
+      logActivity('New Contact Created', dynamicModuleName);
+      logSentRef.current = true;
+    }
+    setLoading(true);
     const formData = new FormData();
 
     // Append all fields except photoURL
@@ -208,16 +232,19 @@ export default function UserCompanyContactEditForm() {
     formData.append('special_notes', data.special_notes);
     formData.append('location_address1', data.location_address1);
     formData.append('location_address2', data.location_address2);
+    formData.append('location_address3', data.location_address3);
     formData.append('city', data.city);
     formData.append('country', data.country);
-    // formData.append('state', data.selectedStates);
     formData.append('zip', data.zip);
-    formData.append('office_phone1', data.office_phone1);
-    formData.append('office_phone2', data.office_phone2);
-    formData.append('cell_phone1', data.cell_phone1);
-    formData.append('cell_phone2', data.cell_phone2);
+    formData.append('office_phone1', officePhone1);
+    formData.append('office_phone2', officePhone2);
+    formData.append('cell_phone1', cellPhone1);
+    formData.append('cell_phone2', cellPhone2);
     formData.append('office_email', data.office_email);
     formData.append('personal_email', data.personal_email);
+    formData.append('business_fax', data.business_fax);
+    formData.append('department', data.department);
+    formData.append('region', data.region);
     formData.append('photo_url', data.photo_url);
     formData.append('access', data.access);
     if (data.photo_url && data.photo_url instanceof File) {
@@ -236,10 +263,13 @@ export default function UserCompanyContactEditForm() {
     formData.forEach((value, key) => {});
 
     try {
+      const token = sessionStorage.getItem('authToken');
       await axiosInstance.post(endpoints.contact.details, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`,
+        },
       });
-
       enqueueSnackbar('Contact created successfully', { variant: 'success' });
     } catch (error) {
       if (error.response && error.response.data && error.response.data.errors) {
@@ -252,14 +282,15 @@ export default function UserCompanyContactEditForm() {
       } else {
         enqueueSnackbar('Error saving contact details', { variant: 'error' });
       }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const onFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setUploadedFile(file);
-    }
+  const handlePhoneChange = (setter) => (event) => {
+    const input = event.target.value;
+    const formatted = input && !input.startsWith('+') ? `+${input}` : input;
+    setter(formatted);
   };
 
   const onSubmit = (data) => {
@@ -320,14 +351,6 @@ export default function UserCompanyContactEditForm() {
     currentPage * itemsPerPage
   );
 
-  const handleNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
-  };
-
-  const handlePrevPage = () => {
-    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
-  };
-
   const isAllSelected = selectedStates.length === statesList.length;
 
   return (
@@ -360,7 +383,19 @@ export default function UserCompanyContactEditForm() {
         </Grid>
 
         <Grid xs={12} md={8}>
-          <Card sx={{ p: 3 }}>
+          <Card sx={{ p: 3, position: 'relative' }}>
+            {/* Add relative positioning */}
+            {loading && (
+              <CircularProgress
+                color="inherit"
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                }}
+              />
+            )}
             <Box
               rowGap={3}
               columnGap={2}
@@ -391,9 +426,9 @@ export default function UserCompanyContactEditForm() {
                   )}
                 />
               </FormControl>
-              <RHFTextField name="client_first_name" label="Client First Name" />
-              <RHFTextField name="client_last_name" label="Client Last Name" />
-              <RHFTextField name="title" label="Title" />
+              <RHFTextField name="client_first_name" label="First Name" />
+              <RHFTextField name="client_last_name" label="Last Name" />
+              <RHFTextField name="title" label="Job Title" />
               <FormControl fullWidth variant="outlined">
                 <InputLabel>Reports To</InputLabel>
                 <Controller
@@ -413,12 +448,14 @@ export default function UserCompanyContactEditForm() {
               </FormControl>
               <RHFTextField name="responsibilities" label="Responsibilities" />
               <RHFTextField name="special_notes" label="Special Notes" />
-              <RHFTextField name="location_address1" label="Location Address 1" />
-              <RHFTextField name="location_address2" label="Location Address 2" />
-              <RHFTextField name="city" label="City" />
+              <RHFTextField name="department" label="Department" />
+              <RHFTextField name="location_address1" label="Business Street" />
+              <RHFTextField name="location_address2" label="Business Street 2" />
+              <RHFTextField name="location_address3" label="Business Street 3" />
+              <RHFTextField name="city" label="Business City" />
               <RHFAutocomplete
                 name="country"
-                label="Country"
+                label="Business Country/Region"
                 options={countries.map((country) => country.label)}
                 getOptionLabel={(option) => option}
                 isOptionEqualToValue={(option, value) => option === value}
@@ -445,64 +482,72 @@ export default function UserCompanyContactEditForm() {
                 }}
               />
               <FormControl fullWidth>
-                <InputLabel>State/Province</InputLabel>
+                <InputLabel>Business State</InputLabel>
                 <Select
                   multiple
                   value={selectedStates}
                   onChange={handleChange}
                   renderValue={(selected) => selected.join(', ')}
+                  MenuProps={{
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300, 
+                        overflowY: 'auto',
+                      },
+                    },
+                  }}
                 >
                   <MenuItem value="all">
                     <Checkbox checked={isAllSelected} />
                     <ListItemText primary="Select All" />
                   </MenuItem>
-
                   {currentItems.map((state) => (
                     <MenuItem key={state.name} value={state.name}>
                       <Checkbox checked={selectedStates.includes(state.name)} />
                       <ListItemText primary={`${state.name} (${state.country})`} />
                     </MenuItem>
                   ))}
-                  <Box display="flex" justifyContent="space-between" p={1}>
-                    <Button size="small" disabled={currentPage === 1} onClick={handlePrevPage}>
-                      Previous
-                    </Button>
-                    <Button
-                      size="small"
-                      disabled={currentPage === totalPages}
-                      onClick={handleNextPage}
-                    >
-                      Next
-                    </Button>
-                  </Box>
                 </Select>
               </FormControl>
-              <RHFTextField name="zip" label="Zip Code/Postal Code" />
+              <RHFTextField name="zip" label="Business Postal Code" />
+              <RHFTextField name="region" label="Region" />
               <RHFTextField
-                name="office_phone1"
+                name="Business Phone"
                 label="Office Phone Number 1"
-                placeholder="+1 234 567-8901"
+                placeholder="12345678901"
+                value={officePhone1}
+                onChange={handlePhoneChange(setOfficePhone1)}
               />
+
               <RHFTextField
-                name="office_phone2"
+                name="Business Phone 2"
                 label="Office Phone Number 2"
-                placeholder="+1 234 567-8901"
+                placeholder="12345678901"
+                value={officePhone2}
+                onChange={handlePhoneChange(setOfficePhone2)}
               />
+
               <RHFTextField
                 name="cell_phone1"
-                label="Cell Phone Number 1"
-                placeholder="+1 234 567-8901"
+                label="Mobile Phone"
+                placeholder="12345678901"
+                value={cellPhone1}
+                onChange={handlePhoneChange(setCellPhone1)}
               />
+
               <RHFTextField
                 name="cell_phone2"
-                label="Cell Phone Number 2"
-                placeholder="+1 234 567-8901"
+                label="Other Phone"
+                placeholder="12345678901"
+                value={cellPhone2}
+                onChange={handlePhoneChange(setCellPhone2)}
               />
-              <RHFTextField name="office_email" label="Office Email address" />
-              <RHFTextField name="personal_email" label="Personal Email address" />
-            </Box>
 
-            <Stack alignItems="flex-end" sx={{ mt: 3 }}>
+              <RHFTextField name="office_email" label="E-mail Address" />
+              <RHFTextField name="personal_email" label="Personal Email Address" />
+              <RHFTextField name="business_fax" label="Business Fax" />
+            </Box>
+            <Stack alignItems="flex-end" sx={{ mb: 3.5, mt: 2 }}>
               <LoadingButton
                 variant="contained"
                 onClick={(e) => {
@@ -516,26 +561,50 @@ export default function UserCompanyContactEditForm() {
           </Card>
         </Grid>
       </Grid>
-      <Box
-        component="footer"
-        sx={{
-          marginTop: '3px',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '50px',
-          right: '35px',
-          position: 'sticky',
-          bottom: 0,
-          width: '80%',
-          zIndex: 1300,
-          backgroundColor: 'white',
-        }}
-      >
-        <Typography variant="body2" color="textSecondary">
-          &copy; {new Date().getFullYear()}
-          <strong>www.SoluComp.com</strong> v1.0
-        </Typography>
+      <Box>
+        <Grid container>{/* Your content */}</Grid>
+
+        <Box
+          component="footer"
+          sx={{
+            marginTop: '70px',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            height: '50px',
+            position: 'fixed',
+            bottom: 0,
+            left: '-50px',
+            width: '100%',
+            maxWidth: '1520px',
+            margin: 'auto',
+            zIndex: 1300,
+            backgroundColor: 'white',
+            padding: '10px',
+            paddingRight: '50px',
+
+            // Responsive styling
+            '@media (max-width: 1024px)': {
+              justifyContent: 'center',
+              paddingRight: '20px',
+            },
+
+            '@media (max-width: 600px)': {
+              justifyContent: 'center',
+              left: '0',
+              width: '100%',
+              padding: '10px 15px',
+            },
+          }}
+        >
+          <Typography variant="body2" color="textSecondary">
+            &copy; {new Date().getFullYear()}
+            <span style={{ marginLeft: '5px' }}>
+              <strong>www.SoluComp.com</strong>
+            </span>
+            v1.0
+          </Typography>
+        </Box>
       </Box>
     </FormProvider>
   );
@@ -543,4 +612,5 @@ export default function UserCompanyContactEditForm() {
 
 UserCompanyContactEditForm.propTypes = {
   currentUser: PropTypes.object,
+  moduleName: PropTypes.string,
 };

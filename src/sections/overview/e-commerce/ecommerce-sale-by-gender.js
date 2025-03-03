@@ -87,7 +87,7 @@ export default function EcommerceSaleByGender({ title, subheader, total, chart, 
         type="radialBar"
         series={chartSeries}
         options={chartOptions}
-        height={170}
+        height={320}
       />
     </Card>
   );

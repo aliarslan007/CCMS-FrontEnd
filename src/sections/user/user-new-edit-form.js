@@ -1,6 +1,6 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import PropTypes from 'prop-types';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import * as Yup from 'yup';
 // @mui
@@ -29,10 +29,11 @@ import imageCompression from 'browser-image-compression';
 import FormProvider, { RHFTextField, RHFUploadAvatar } from 'src/components/hook-form';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 
 // ----------------------------------------------------------------------
 
-export default function UserNewEditForm() {
+export default function UserNewEditForm({ moduleName }) {
   const router = useRouter();
 
   const { enqueueSnackbar } = useSnackbar();
@@ -48,6 +49,8 @@ export default function UserNewEditForm() {
   const [selectedReportTo, setSelectedReportTo] = useState(null);
 
   const permissionssName = ['Full Access', 'Partial Access', 'Limited', 'View Only'];
+
+  const logSentRef = useRef(false);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -131,6 +134,11 @@ export default function UserNewEditForm() {
   } = methods;
 
   const handleSaveChanges = async (data) => {
+    if (!logSentRef.current) {
+      const dynamicModuleName = moduleName || 'Create Profile';
+      logActivity('New User Created', dynamicModuleName);
+      logSentRef.current = true;
+    }
     const formData = new FormData();
 
     // Append all fields except photoURL
@@ -261,12 +269,12 @@ export default function UserNewEditForm() {
               <RHFTextField
                 name="office_phone"
                 label="Office Phone"
-                placeholder="+1 234 567-8901"
+                placeholder="+12345678901"
               />
               <RHFTextField
                 name="main_phone_number"
                 label="Mobile Phone Number"
-                placeholder="+1 234 567-8901"
+                placeholder="+12345678901"
               />
               <RHFTextField name="office_email" label="Office Email Address" />
               <RHFTextField name="personal_email" label="Personal Email Address" />
@@ -404,7 +412,7 @@ export default function UserNewEditForm() {
                 helperText="Password must be at least 8 characters long."
               />
             </Box>
-            <Stack alignItems="flex-end" sx={{ mt: 3 }}>
+            <Stack alignItems="flex-end" sx={{ mb: 3.5 }}>
               <LoadingButton
                 variant="contained"
                 onClick={(e) => {
@@ -418,26 +426,50 @@ export default function UserNewEditForm() {
           </Card>
         </Grid>
       </Grid>
-      <Box
-        component="footer"
-        sx={{
-          marginTop: '3px',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '50px',
-          right: '35px',
-          position: 'sticky',
-          bottom: 0,
-          width: '80%',
-          zIndex: 1300,
-          backgroundColor: 'white',
-        }}
-      >
-        <Typography variant="body2" color="textSecondary">
-          &copy; {new Date().getFullYear()}
-          <strong>www.SoluComp.com</strong> v1.0
-        </Typography>
+      <Box>
+        <Grid container>{/* Your content */}</Grid>
+
+        <Box
+          component="footer"
+          sx={{
+            marginTop: '70px',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            height: '50px',
+            position: 'fixed',
+            bottom: 0,
+            left: '-50px',
+            width: '100%',
+            maxWidth: '1520px',
+            margin: 'auto',
+            zIndex: 1300,
+            backgroundColor: 'white',
+            padding: '10px',
+            paddingRight: '50px',
+
+            // Responsive styling
+            '@media (max-width: 1024px)': {
+              justifyContent: 'center',
+              paddingRight: '20px',
+            },
+
+            '@media (max-width: 600px)': {
+              justifyContent: 'center',
+              left: '0',
+              width: '100%',
+              padding: '10px 15px',
+            },
+          }}
+        >
+          <Typography variant="body2" color="textSecondary">
+            &copy; {new Date().getFullYear()}
+            <span style={{ marginLeft: '5px' }}>
+              <strong>www.SoluComp.com</strong>
+            </span>
+            v1.0
+          </Typography>
+        </Box>
       </Box>
     </FormProvider>
   );
@@ -445,4 +477,5 @@ export default function UserNewEditForm() {
 
 UserNewEditForm.propTypes = {
   currentUser: PropTypes.object,
+  moduleName: PropTypes.string,
 };

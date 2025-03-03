@@ -6,9 +6,7 @@ import { HOST_API } from 'src/config-global';
 
 const axiosInstance = axios.create({ baseURL: HOST_API });
 
-axiosInstance.interceptors.response.use(
-  response => response,
-);
+axiosInstance.interceptors.response.use((response) => response);
 
 export default axiosInstance;
 
@@ -25,60 +23,59 @@ export const fetcher = async (args) => {
 // ----------------------------------------------------------------------
 
 export const endpoints = {
-
-  register:{
-    url:'api/register'
+  register: {
+    url: 'api/register',
   },
-  
-  login:{
-    url: 'api/login'
+
+  login: {
+    url: 'api/login',
   },
 
   password: {
-    verify:'/api/verify-password'
+    verify: '/api/verify-password',
   },
 
   company: {
-    details: '/api/companies/1',
+    details: '/api/companies',
   },
-  user:{
-    create:'/api/profiles',
+  user: {
+    create: '/api/profiles',
   },
-  profile:{
+  profile: {
     details: (uuid) => `/api/profiles/${uuid}`,
   },
 
-  admin:{
-    details:'/api/users',
+  admin: {
+    details: '/api/users',
   },
 
-  companies:{
-    accounts:'/api/company-accounts',
+  companies: {
+    accounts: '/api/company-accounts',
   },
 
-  details:{
+  details: {
     accounts: (uuid) => `/api/company-accounts/${uuid}`,
   },
 
-  complete:{
+  complete: {
     accounts: (id) => `/api/companyaccount/${id}`,
   },
 
-  all:{
+  all: {
     company: '/api/allcompanyaccount',
   },
 
-  filter:{
-  company :'/api/company/filter',
+  filter: {
+    company: '/api/company/filter',
   },
 
   // Company Contact Endpoints
 
-  contact:{
-    details: '/api/company-contacts'
+  contact: {
+    details: '/api/company-contacts',
   },
 
-  solo:{
+  solo: {
     details: (id) => `/api/company-contacts/${id}`,
   },
 
@@ -90,7 +87,7 @@ export const endpoints = {
   },
 
   restores: {
-    details:`/api/inactive-profiles`,
+    details: `/api/inactive-profiles`,
   },
 
   restore: {
@@ -99,26 +96,25 @@ export const endpoints = {
 
   markdelete: {
     marked_profiles: `/api/mark-profiles`,
-    get_marked:(id) => `/api/mark-delete/${id}`,
+    get_marked: (id) => `/api/mark-delete/${id}`,
     marked: (id) => `/api/mark-delete/${id}`,
     confirmdelete: (id) => `/api/permanent-delete/${id}`,
   },
 
-
-  follow_up:{
+  follow_up: {
     details: (id) => `/api/follow-up/${id}`,
   },
 
-  submit:{
-    follow_up: '/api/follow-up'
+  submit: {
+    follow_up: '/api/follow-up',
   },
 
   change: {
-    password:`/api/password-change`,
+    password: `/api/password-change`,
   },
 
-  assigned:{
-    agent: 'api/permission_control'
+  assigned: {
+    agent: 'api/permission_control',
   },
 
   files: {
@@ -129,35 +125,73 @@ export const endpoints = {
     date: `/api/get_follow_ups`,
   },
 
-
   export: {
-    function:`/api/export-record`,
+    function: `/api/export-record`,
   },
 
   import: {
-    function:`/api/import-record`,
+    function: `/api/import-record`,
   },
 
   award: {
-    function:`/api/awards`,
+    function: `/api/awards`,
   },
 
   state: {
-    function:`/api/states`,
+    function: `/api/states`,
   },
 
   search: {
-    company:`/api/company-search`,
-    contact:`/api/search`,
-    profile:'/api/profile-search'
+    company: `/api/company-search`,
+    contact: `/api/search`,
+    profile: '/api/profile-search',
   },
 
   file: {
-    upload:`/api/upload-file`,
+    upload: `/api/upload-file`,
   },
 
   forgot: {
     password: `/api/forgot-password`,
   },
 
+  pipeline: {
+    create: `/api/pipelines`,
+  },
+
+  get: {
+    pipeline: `/api/pipelines`,
+  },
+
+  update: {
+    pipeline: `/api/pipelines`,
+  },
+
+  pipelines: {
+    filter: `/api/filterpipeline`,
+  },
+
+  exports: {
+    pipelines: `/api/pipelines/export`,
+  },
+
+  users: {
+    counts: `/api/usercount`,
+  },
+  notification: {
+    user: (id) => `/api/notifications/${id}`,
+    is_read:'/api/notifications/mark-as-read'
+  },
+
+  activity: {
+    user: `/api/user-activity`,
+    filter: `/api/filter-activity`,
+    delete: `/api/filter-activity`,
+  },
+
+  store: {
+    target: `/api/target`,
+    del: (id) => `/api/target/${id}`,
+  }
+  
 };

@@ -1,4 +1,4 @@
-import { useMemo, useCallback,useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 // routes
 import { paths } from 'src/routes/paths';
@@ -301,7 +301,7 @@ export function useNavData() {
       },
 
       {
-        subheader: t('Records Marked for deletion'),
+        subheader: t('REPORTS'),
         items: [
           {
             title: (
@@ -310,14 +310,43 @@ export function useNavData() {
                   textAlign: 'left',
                   paddingLeft: '15px',
                   display: 'block',
-                  paddingRight: '90px',
+                  paddingRight: '70px',
                 }}
               >
-                {t('Marked For Deletion')}
+                {t('Pipeline')}
               </span>
             ),
-            path: paths.dashboard.user.deletion,
-            // icon: ICONS.analytics,
+            path: paths.dashboard.user.pipline,
+          },
+          {
+            title: (
+              <span
+                style={{
+                  textAlign: 'left',
+                  paddingLeft: '15px',
+                  display: 'block',
+                  paddingRight: '70px',
+                }}
+              >
+                {t('Generated Sales')}
+              </span>
+            ),
+            path: paths.dashboard.user.gensales,
+          },
+          {
+            title: (
+              <span
+                style={{
+                  textAlign: 'left',
+                  paddingLeft: '15px',
+                  display: 'block',
+                  paddingRight: '70px',
+                }}
+              >
+                {t('Set Target')}
+              </span>
+            ),
+            path: paths.dashboard.user.target,
           },
         ],
       },
@@ -334,7 +363,7 @@ export function useNavData() {
                   display: 'block',
                 }}
               >
-                {t('Reports')}
+                {t('Activity Log')}
               </span>
             ),
             path: paths.dashboard.general.analytics,
@@ -365,31 +394,83 @@ export function useNavData() {
         ],
       },
 
-      // {
-      //   subheader: t('Org Chart'),
-      //   items: [
-      //     {
-      //       title: (
-      //         <span
-      //           style={{
-      //             textAlign: 'left',
-      //             paddingLeft: '15px',
-      //             display: 'block',
-      //             paddingRight: '150px',
-      //           }}
-      //         >
-      //           {t('ORG CHART')}
-      //         </span>
-      //       ),
-      //       path: paths.dashboard.user.orgchart,
-      //       // icon: ICONS.analytics,
-      //     },
-      //   ],
-      // },
+      {
+        subheader: t('Records Marked for deletion'),
+        items: [
+          {
+            title: (
+              <span
+                style={{
+                  textAlign: 'left',
+                  paddingLeft: '15px',
+                  display: 'block',
+                  paddingRight: '90px',
+                }}
+              >
+                {t('Marked For Deletion')}
+              </span>
+            ),
+            path: paths.dashboard.user.deletion,
+            // icon: ICONS.analytics,
+          },
+        ],
+      },
     ];
 
     if (userRole === 'Sales Representative') {
-      return baseNav;
+      return [
+        ...baseNav, // Include the base navigation items
+        {
+          subheader: t('REPORTS'),
+          items: [
+            {
+              title: (
+                <span
+                  style={{
+                    textAlign: 'left',
+                    paddingLeft: '15px',
+                    display: 'block',
+                    paddingRight: '70px',
+                  }}
+                >
+                  {t('Pipeline')}
+                </span>
+              ),
+              path: paths.dashboard.user.pipline,
+            },
+            {
+              title: (
+                <span
+                  style={{
+                    textAlign: 'left',
+                    paddingLeft: '15px',
+                    display: 'block',
+                    paddingRight: '70px',
+                  }}
+                >
+                  {t('Generated Sales')}
+                </span>
+              ),
+              path: paths.dashboard.user.gensales,
+            },
+            {
+              title: (
+                <span
+                  style={{
+                    textAlign: 'left',
+                    paddingLeft: '15px',
+                    display: 'block',
+                    paddingRight: '70px',
+                  }}
+                >
+                  {t('Sales Target')}
+                </span>
+              ),
+              path: paths.dashboard.user.target,
+            },
+          ],
+        },
+      ];
     }
 
     if (userRole === 'Sales Manager') {
@@ -406,6 +487,79 @@ export function useNavData() {
             },
           ],
         },
+
+        {
+          subheader: t('REPORTS'),
+          items: [
+            {
+              title: (
+                <span
+                  style={{
+                    textAlign: 'left',
+                    paddingLeft: '15px',
+                    display: 'block',
+                    paddingRight: '70px',
+                  }}
+                >
+                  {t('Pipeline')}
+                </span>
+              ),
+              path: paths.dashboard.user.pipline,
+            },
+            {
+              title: (
+                <span
+                  style={{
+                    textAlign: 'left',
+                    paddingLeft: '15px',
+                    display: 'block',
+                    paddingRight: '70px',
+                  }}
+                >
+                  {t('Generated Sales')}
+                </span>
+              ),
+              path: paths.dashboard.user.gensales,
+            },
+            {
+              title: (
+                <span
+                  style={{
+                    textAlign: 'left',
+                    paddingLeft: '15px',
+                    display: 'block',
+                    paddingRight: '70px',
+                  }}
+                >
+                  {t('Sales Target')}
+                </span>
+              ),
+              path: paths.dashboard.user.target,
+            },
+          ],
+        },
+
+        {
+          items: [
+            {
+              title: t('Inactive'),
+              path: paths.dashboard.user.root,
+              // icon: ICONS.analytics,
+              children: [{ title: t('Inactive'), path: paths.dashboard.user.inactivelist }],
+            },
+          ],
+        },
+
+        {
+          items: [
+            {
+              title: t('Mark For Delete'),
+              path: paths.dashboard.user.root,
+              // icon: ICONS.analytics,
+              children: [{ title: t('Mark For Delete'), path: paths.dashboard.user.deletion }],
+            },
+          ],
+        },
       ];
     }
 
@@ -413,7 +567,7 @@ export function useNavData() {
       return [...baseNav, ...managementNav];
     }
 
-    return []; 
+    return [];
   }, [t, userRole, getSubheader]);
 
   return data;

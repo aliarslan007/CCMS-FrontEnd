@@ -1,5 +1,5 @@
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useParams } from 'react-router-dom';
 import * as Yup from 'yup';
@@ -14,13 +14,15 @@ import Grid from '@mui/material/Unstable_Grid2';
 // utils
 // components
 import imageCompression from 'browser-image-compression';
+import PropTypes from 'prop-types';
 import FormProvider, { RHFTextField, RHFUploadAvatar } from 'src/components/hook-form';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 
 // ----------------------------------------------------------------------
 
-export default function AccountGeneral() {
+export default function AccountGeneral({ moduleName }) {
   const { enqueueSnackbar } = useSnackbar();
 
   const { uuid } = useParams();
@@ -37,8 +39,15 @@ export default function AccountGeneral() {
 
   const [saving, setSaving] = useState(false);
 
+  const logSentRef = useRef(false);
+
   useEffect(() => {
     const fetchProfileDetails = async () => {
+      if (!logSentRef.current) {
+        const dynamicModuleName = moduleName || 'Admin Profile';
+        logActivity('User view My Admin Profile', dynamicModuleName);
+        logSentRef.current = true;
+      }
       try {
         const token = sessionStorage.getItem('authToken');
         const params = new URLSearchParams();
@@ -70,7 +79,7 @@ export default function AccountGeneral() {
     };
 
     fetchProfileDetails();
-  }, [uuid, enqueueSnackbar]);
+  }, [uuid, moduleName, enqueueSnackbar]);
 
   const UpdateUserSchema = Yup.object().shape({
     full_name: Yup.string().required('First name is required'),
@@ -247,7 +256,7 @@ export default function AccountGeneral() {
 
   return (
     <FormProvider methods={methods} onSubmit={onSubmit}>
-      <Grid container spacing={3}sx={{ paddingBottom: '50px' }}>
+      <Grid container spacing={3} sx={{ paddingBottom: '50px' }}>
         {/* Avatar Section */}
         <Grid xs={12} md={4}>
           <Card sx={{ pt: 10, pb: 5, px: 3, textAlign: 'center' }}>
@@ -349,28 +358,53 @@ export default function AccountGeneral() {
       </Grid>
       <Box>
         <Grid container>{/* Your content */}</Grid>
+
         <Box
           component="footer"
           sx={{
             marginTop: '70px',
             display: 'flex',
-            justifyContent: 'center',
+            justifyContent: 'flex-end',
             alignItems: 'center',
             height: '50px',
-            left: '170px',
             position: 'fixed',
             bottom: 0,
-            width: '80%',
+            left: '-50px',
+            width: '100%',
+            maxWidth: '1520px',
+            margin: 'auto',
             zIndex: 1300,
             backgroundColor: 'white',
+            padding: '10px',
+            paddingRight: '50px',
+
+            // Responsive styling
+            '@media (max-width: 1024px)': {
+              justifyContent: 'center',
+              paddingRight: '20px',
+            },
+
+            '@media (max-width: 600px)': {
+              justifyContent: 'center',
+              left: '0',
+              width: '100%',
+              padding: '10px 15px',
+            },
           }}
         >
           <Typography variant="body2" color="textSecondary">
             &copy; {new Date().getFullYear()}
-            <strong>www.SoluComp.com</strong> v1.0
+            <span style={{ marginLeft: '5px' }}>
+              <strong>www.SoluComp.com</strong>
+            </span>
+            v1.0
           </Typography>
         </Box>
       </Box>
     </FormProvider>
   );
 }
+
+AccountGeneral.propTypes = {
+  moduleName: PropTypes.string,
+};

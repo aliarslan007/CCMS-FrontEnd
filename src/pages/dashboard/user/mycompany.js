@@ -1,5 +1,5 @@
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState,useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { useParams } from 'react-router-dom';
 // import { useParams } from 'react-router-dom';
@@ -22,13 +22,15 @@ import FormProvider, {
   RHFTextField,
   RHFUploadAvatar,
 } from 'src/components/hook-form';
+import PropTypes from 'prop-types';
 import Iconify from 'src/components/iconify';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 
 // ----------------------------------------------------------------------
 
-export default function MyCompany() {
+export default function MyCompany({moduleName}) {
   const { id } = useParams();
   const { enqueueSnackbar } = useSnackbar();
 
@@ -42,7 +44,14 @@ export default function MyCompany() {
 
   const [saving, setSaving] = useState(false);
 
+  const logSentRef = useRef(false);
+
   useEffect(() => {
+    if (!logSentRef.current) {
+      const dynamicModuleName = moduleName || 'My Corporation Module';
+      logActivity('User view My Corporation', dynamicModuleName);
+      logSentRef.current = true;
+    }
     const fetchCompanyDetails = async () => {
       try {
         const response = await axiosInstance.get(endpoints.company.details);
@@ -56,7 +65,7 @@ export default function MyCompany() {
     };
 
     fetchCompanyDetails();
-  }, [id, enqueueSnackbar]);
+  }, [id, enqueueSnackbar,moduleName]);
 
   const UpdateCompanySchema = Yup.object().shape({
     displayName: Yup.string().required('Name is required'),
@@ -313,28 +322,53 @@ export default function MyCompany() {
       </Grid>
       <Box>
         <Grid container>{/* Your content */}</Grid>
+
         <Box
           component="footer"
           sx={{
             marginTop: '70px',
             display: 'flex',
-            justifyContent: 'center',
+            justifyContent: 'flex-end',
             alignItems: 'center',
             height: '50px',
-            left: '170px',
             position: 'fixed',
             bottom: 0,
-            width: '80%',
+            left: '-50px',
+            width: '100%',
+            maxWidth: '1520px',
+            margin: 'auto',
             zIndex: 1300,
             backgroundColor: 'white',
+            padding: '10px',
+            paddingRight: '50px',
+
+            // Responsive styling
+            '@media (max-width: 1024px)': {
+              justifyContent: 'center',
+              paddingRight: '20px',
+            },
+
+            '@media (max-width: 600px)': {
+              justifyContent: 'center',
+              left: '0',
+              width: '100%',
+              padding: '10px 15px',
+            },
           }}
         >
           <Typography variant="body2" color="textSecondary">
             &copy; {new Date().getFullYear()}
-            <strong>www.SoluComp.com</strong> v1.0
+            <span style={{ marginLeft: '5px' }}>
+              <strong>www.SoluComp.com</strong>
+            </span>
+            v1.0
           </Typography>
         </Box>
       </Box>
     </FormProvider>
   );
 }
+
+MyCompany.propTypes = {
+  moduleName: PropTypes.string,
+};

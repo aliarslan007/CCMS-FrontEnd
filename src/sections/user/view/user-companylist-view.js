@@ -1,6 +1,6 @@
 import isEqual from 'lodash/isEqual';
 import PropTypes from 'prop-types';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 // @mui
 import { Box, Grid, Typography } from '@mui/material';
@@ -35,6 +35,7 @@ import {
 //
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 import UserTableFiltersResult from '../user-table-filters-result';
 import UserTableRow from '../user-table-row-accounts';
 import UserTableToolbar from '../user-table-toolbar';
@@ -57,7 +58,7 @@ const defaultFilters = {
 
 // ----------------------------------------------------------------------
 
-export default function OverviewSalesListView({ contactId, onFilters }) {
+export default function OverviewSalesListView({ contactId, onFilters, moduleName }) {
   const table = useTable();
 
   const settings = useSettingsContext();
@@ -84,7 +85,14 @@ export default function OverviewSalesListView({ contactId, onFilters }) {
 
   const [companyTypes, setCompanyTypes] = useState([]);
 
+  const logSentRef = useRef(false);
+
   useEffect(() => {
+    if (!logSentRef.current) {
+      const dynamicModuleName = moduleName || 'CLIENT ACCOUNT MANAGMENT';
+      logActivity('User view Client Companies', dynamicModuleName);
+      logSentRef.current = true;
+    }
     const fetchUsers = async () => {
       setLoading(true);
       try {
@@ -107,7 +115,7 @@ export default function OverviewSalesListView({ contactId, onFilters }) {
     };
 
     fetchUsers();
-  }, []);
+  }, [moduleName]);
 
   // Handle inactive companies
   const handleMarkInactive = async () => {
@@ -130,6 +138,8 @@ export default function OverviewSalesListView({ contactId, onFilters }) {
         })),
       };
       await axiosInstance.patch(url, data);
+      logActivity('User inactive a company', moduleName || 'CLIENT ACCOUNT MANAGEMENT');
+
       enqueueSnackbar('Selected Company marked as inactive', { variant: 'success' });
       setUsers((prevUsers) =>
         prevUsers.filter((user) => !selectedIds.map((s) => s.id).includes(user.id))
@@ -421,25 +431,46 @@ export default function OverviewSalesListView({ contactId, onFilters }) {
       />
       <Box>
         <Grid container>{/* Your content */}</Grid>
+
         <Box
           component="footer"
           sx={{
             marginTop: '70px',
             display: 'flex',
-            justifyContent: 'center',
+            justifyContent: 'flex-end',
             alignItems: 'center',
             height: '50px',
-            left: '170px',
             position: 'fixed',
             bottom: 0,
-            width: '80%',
+            left: '-50px',
+            width: '100%',
+            maxWidth: '1520px',
+            margin: 'auto',
             zIndex: 1300,
             backgroundColor: 'white',
+            padding: '10px',
+            paddingRight: '50px',
+
+            // Responsive styling
+            '@media (max-width: 1024px)': {
+              justifyContent: 'center',
+              paddingRight: '20px',
+            },
+
+            '@media (max-width: 600px)': {
+              justifyContent: 'center',
+              left: '0',
+              width: '100%',
+              padding: '10px 15px',
+            },
           }}
         >
           <Typography variant="body2" color="textSecondary">
             &copy; {new Date().getFullYear()}
-            <strong>www.SoluComp.com</strong> v1.0
+            <span style={{ marginLeft: '5px' }}>
+              <strong>www.SoluComp.com</strong>
+            </span>
+            v1.0
           </Typography>
         </Box>
       </Box>
@@ -483,3 +514,7 @@ function applyFilter({ inputData, comparator, filters }) {
 
   return inputData;
 }
+
+OverviewSalesListView.propTypes = {
+  moduleName: PropTypes.string,
+};

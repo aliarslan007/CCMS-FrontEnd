@@ -5,15 +5,7 @@ import { useParams } from 'react-router-dom';
 import * as Yup from 'yup';
 // @mui
 import LoadingButton from '@mui/lab/LoadingButton';
-import {
-  Button,
-  Checkbox,
-  FormControl,
-  InputLabel,
-  ListItemText,
-  MenuItem,
-  Select,
-} from '@mui/material';
+import { Checkbox, FormControl, InputLabel, ListItemText, MenuItem, Select } from '@mui/material';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
@@ -26,6 +18,7 @@ import { useMockedUser } from 'src/hooks/use-mocked-user';
 import { countries } from 'src/assets/data';
 // components
 import imageCompression from 'browser-image-compression';
+import PropTypes from 'prop-types';
 import FormProvider, {
   RHFAutocomplete,
   RHFTextField,
@@ -34,10 +27,11 @@ import FormProvider, {
 import Iconify from 'src/components/iconify';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 
 // ----------------------------------------------------------------------
 
-export default function CompanyDetailsInfoEdit() {
+export default function CompanyDetailsInfoEdit({ moduleName }) {
   const { id } = useParams();
   const { uuid } = useParams();
   const { enqueueSnackbar } = useSnackbar();
@@ -60,7 +54,16 @@ export default function CompanyDetailsInfoEdit() {
 
   const [currentPage, setCurrentPage] = useState(1);
 
-  const itemsPerPage = 10;
+  const itemsPerPage = 100;
+
+  const [phoneNumber, setPhoneNumber] = useState('');
+
+  const handlePhoneNumberChange = (event) => {
+    const input = event.target.value;
+    const formattedPhoneNumber = input && !input.startsWith('+') ? `+${input}` : input;
+
+    setPhoneNumber(formattedPhoneNumber);
+  };
 
   useEffect(() => {
     const fetchCompanyDetails = async () => {
@@ -137,6 +140,7 @@ export default function CompanyDetailsInfoEdit() {
       setValue('country', companyDetails.country);
       setValue('zip', companyDetails.zip);
       setValue('phone_number', companyDetails.phone_number);
+      setPhoneNumber(companyDetails.phone_number);
       setValue('website', companyDetails.website);
       setValue('facebook_url', companyDetails.facebook_url);
       setValue('linkedin_url', companyDetails.linkedin_url);
@@ -149,6 +153,9 @@ export default function CompanyDetailsInfoEdit() {
 
   const token = sessionStorage.getItem('authToken');
   const handleSaveChanges = async (data) => {
+    logActivity('User edit company details', moduleName || 'COMPANY EDIT DETAILS', {
+      identification: companyDetails.company_name,
+    });
     const formData = new FormData();
 
     // Append all fields except photoURL
@@ -160,7 +167,7 @@ export default function CompanyDetailsInfoEdit() {
     formData.append('city', data.city);
     formData.append('country', data.country);
     formData.append('zip', data.zip);
-    formData.append('phone_number', data.phone_number);
+    formData.append('phone_number', phoneNumber);
     formData.append('website', data.website);
     formData.append('facebook_url', data.facebook_url);
     formData.append('linkedin_url', data.linkedin_url);
@@ -349,30 +356,25 @@ export default function CompanyDetailsInfoEdit() {
                     value={selectedStates}
                     onChange={handleChange}
                     renderValue={(selected) => selected.join(', ')}
+                    MenuProps={{
+                      PaperProps: {
+                        style: {
+                          maxHeight: 300,
+                          overflowY: 'auto',
+                        },
+                      },
+                    }}
                   >
                     <MenuItem value="all">
                       <Checkbox checked={isAllSelected} />
                       <ListItemText primary="Select All" />
                     </MenuItem>
-
                     {currentItems.map((state) => (
                       <MenuItem key={state.name} value={state.name}>
                         <Checkbox checked={selectedStates.includes(state.name)} />
                         <ListItemText primary={`${state.name} (${state.country})`} />
                       </MenuItem>
                     ))}
-                    <Box display="flex" justifyContent="space-between" p={1}>
-                      <Button size="small" disabled={currentPage === 1} onClick={handlePrevPage}>
-                        Previous
-                      </Button>
-                      <Button
-                        size="small"
-                        disabled={currentPage === totalPages}
-                        onClick={handleNextPage}
-                      >
-                        Next
-                      </Button>
-                    </Box>
                   </Select>
                 </FormControl>
               )}
@@ -409,7 +411,9 @@ export default function CompanyDetailsInfoEdit() {
               <RHFTextField
                 name="phone_number"
                 label="Main Phone Number"
-                placeholder="+1 234 567-8901"
+                placeholder="12345678901"
+                value={phoneNumber}
+                onChange={handlePhoneNumberChange}
                 disabled={!isEditable}
               />
               <RHFTextField
@@ -462,3 +466,6 @@ export default function CompanyDetailsInfoEdit() {
     </FormProvider>
   );
 }
+CompanyDetailsInfoEdit.propTypes = {
+  moduleName: PropTypes.string,
+};

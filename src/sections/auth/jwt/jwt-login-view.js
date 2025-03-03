@@ -1,5 +1,5 @@
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useState,useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import * as Yup from 'yup';
 // @mui
@@ -141,7 +141,7 @@ export default function JwtLoginView() {
         label="Email address"
         value={email || getValues('personal_email')}
         onChange={(e) => {
-          setValue('personal_email', e.target.value);
+          setValue('personal_email', e.target.value, { shouldValidate: true });
           setEmail(e.target.value);
         }}
       />
@@ -171,16 +171,16 @@ export default function JwtLoginView() {
       </Link>
       Google reCAPTCHA
       <Controller
-      name="recaptcha"
-      control={control}
-      render={({ field }) => (
-        <ReCAPTCHA
-          ref={recaptchaRef}
-          sitekey="6Le_qaMqAAAAAJh8K0tT8pBiPUJ6PIrzsULPjI4T"
-          onChange={(value) => setValue('recaptcha', value)}
-        />
-      )}
-    />
+        name="recaptcha"
+        control={control}
+        render={({ field }) => (
+          <ReCAPTCHA
+            ref={recaptchaRef}
+            sitekey="6Le_qaMqAAAAAJh8K0tT8pBiPUJ6PIrzsULPjI4T"
+            onChange={(value) => setValue('recaptcha', value)}
+          />
+        )}
+      />
       <LoadingButton
         fullWidth
         color="inherit"

@@ -1,20 +1,30 @@
 import PropTypes from 'prop-types';
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 // @mui
-import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
-import MenuItem from '@mui/material/MenuItem';
-import CardHeader from '@mui/material/CardHeader';
 import ButtonBase from '@mui/material/ButtonBase';
 import Card from '@mui/material/Card';
+import CardHeader from '@mui/material/CardHeader';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import { useTheme } from '@mui/material/styles';
 // components
-import Iconify from 'src/components/iconify';
 import Chart, { useChart } from 'src/components/chart';
 import CustomPopover, { usePopover } from 'src/components/custom-popover';
+import Iconify from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
-export default function AppAreaInstalled({ title, subheader, chart, ...other }) {
+export default function AppAreaInstalled({
+  title,
+  subheader,
+  chart,
+  onYearChange,
+  onStateChange,
+  selectedState,
+  showStateSelect,
+  ...other
+}) {
   const theme = useTheme();
 
   const {
@@ -24,12 +34,16 @@ export default function AppAreaInstalled({ title, subheader, chart, ...other }) 
     ],
     categories,
     series,
+    availableYears = [],
+    availableStates = [],
     options,
   } = chart;
 
   const popover = usePopover();
 
-  const [seriesData, setSeriesData] = useState('2019');
+  const [selectedYear, setSelectedYear] = useState(
+    availableYears[0]?.toString() || new Date().getFullYear().toString()
+  );
 
   const chartOptions = useChart({
     colors: colors.map((colr) => colr[1]),
@@ -51,9 +65,10 @@ export default function AppAreaInstalled({ title, subheader, chart, ...other }) 
   const handleChangeSeries = useCallback(
     (newValue) => {
       popover.onClose();
-      setSeriesData(newValue);
+      setSelectedYear(newValue);
+      onYearChange(parseInt(newValue, 10));
     },
-    [popover]
+    [popover, onYearChange]
   );
 
   return (
@@ -63,45 +78,60 @@ export default function AppAreaInstalled({ title, subheader, chart, ...other }) 
           title={title}
           subheader={subheader}
           action={
-            <ButtonBase
-              onClick={popover.onOpen}
-              sx={{
-                pl: 1,
-                py: 0.5,
-                pr: 0.5,
-                borderRadius: 1,
-                typography: 'subtitle2',
-                bgcolor: 'background.neutral',
-              }}
-            >
-              {seriesData}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {/* Year Dropdown */}
+              <ButtonBase
+                onClick={popover.onOpen}
+                sx={{
+                  pl: 1,
+                  py: 0.5,
+                  pr: 0.5,
+                  borderRadius: 1,
+                  typography: 'subtitle2',
+                  bgcolor: 'background.neutral',
+                }}
+              >
+                {selectedYear}
+                <Iconify
+                  width={16}
+                  icon={popover.open ? 'eva:arrow-ios-upward-fill' : 'eva:arrow-ios-downward-fill'}
+                  sx={{ ml: 0.5 }}
+                />
+              </ButtonBase>
 
-              <Iconify
-                width={16}
-                icon={popover.open ? 'eva:arrow-ios-upward-fill' : 'eva:arrow-ios-downward-fill'}
-                sx={{ ml: 0.5 }}
-              />
-            </ButtonBase>
+              {/* State Dropdown */}
+              {showStateSelect && ( // Conditionally render the Select
+                <Select
+                  value={selectedState || ''}
+                  onChange={(e) => onStateChange(e.target.value)}
+                  displayEmpty
+                  sx={{ minWidth: 100, height: 30 }}
+                >
+                  <MenuItem value="">All States</MenuItem>
+                  {availableStates.map((state) => (
+                    <MenuItem key={state} value={state}>
+                      {state}
+                    </MenuItem>
+                  ))}
+                </Select>
+              )}
+            </Box>
           }
         />
 
-        {series.map((item) => (
-          <Box key={item.year} sx={{ mt: 3, mx: 3 }}>
-            {item.year === seriesData && (
-              <Chart dir="ltr" type="line" series={item.data} options={chartOptions} height={170} />
-            )}
-          </Box>
-        ))}
+        <Box sx={{ mt: 3, mx: 3 }}>
+          <Chart dir="ltr" type="line" series={series} options={chartOptions} height={170} />
+        </Box>
       </Card>
 
       <CustomPopover open={popover.open} onClose={popover.onClose} sx={{ width: 140 }}>
-        {series.map((option) => (
+        {availableYears.map((year) => (
           <MenuItem
-            key={option.year}
-            selected={option.year === seriesData}
-            onClick={() => handleChangeSeries(option.year)}
+            key={year}
+            selected={year.toString() === selectedYear}
+            onClick={() => handleChangeSeries(year.toString())}
           >
-            {option.year}
+            {year}
           </MenuItem>
         ))}
       </CustomPopover>
@@ -113,4 +143,8 @@ AppAreaInstalled.propTypes = {
   chart: PropTypes.object,
   subheader: PropTypes.string,
   title: PropTypes.string,
+  onYearChange: PropTypes.func,
+  onStateChange: PropTypes.func,
+  selectedState: PropTypes.string,
+  showStateSelect: PropTypes.bool,
 };

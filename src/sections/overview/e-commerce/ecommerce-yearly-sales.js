@@ -1,44 +1,91 @@
 import PropTypes from 'prop-types';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 // @mui
-import MenuItem from '@mui/material/MenuItem';
+import {
+  Card,
+  CardHeader,
+  Checkbox,
+  FormControl,
+  InputLabel,
+  ListItemText,
+  MenuItem,
+  Select,
+} from '@mui/material';
 import Box from '@mui/material/Box';
-import ButtonBase from '@mui/material/ButtonBase';
-import CardHeader from '@mui/material/CardHeader';
-import Card from '@mui/material/Card';
+
 // components
-import Iconify from 'src/components/iconify';
+import { useTheme } from '@mui/material/styles';
 import Chart, { useChart } from 'src/components/chart';
-import CustomPopover, { usePopover } from 'src/components/custom-popover';
+import { usePopover } from 'src/components/custom-popover';
 
 // ----------------------------------------------------------------------
 
-export default function EcommerceYearlySales({ title, subheader, chart, ...other }) {
+export default function EcommerceYearlySales({
+  title,
+  subheader,
+  chart,
+  availableUsers,
+  onUserChange,
+  ...other
+}) {
   const { colors, categories, series, options } = chart;
 
   const popover = usePopover();
 
+  const theme = useTheme();
+
+  const [selectedUsers, setSelectedUsers] = useState([]);
+
   const [seriesData, setSeriesData] = useState('2019');
 
+  const [openPopover, setOpenPopover] = useState(false);
+
   const chartOptions = useChart({
-    colors,
-    legend: {
-      position: 'top',
-      horizontalAlign: 'right',
+    colors: chart.colors || [theme.palette.primary.main, theme.palette.warning.main],
+    chart: {
+      sparkline: { enabled: false }, // Keep normal axes
     },
     xaxis: {
-      categories,
+      categories: chart.categories,
+      labels: { show: true },
     },
-    ...options,
+    yaxis: {
+      labels: {
+        formatter: (val) => `$${val.toLocaleString()}`,
+      },
+      forceNiceScale: true,
+    },
+    tooltip: {
+      shared: true,
+      intersect: false,
+      y: {
+        formatter: (val) => `$${val.toLocaleString()}`,
+      },
+    },
+    // 2) Add line-specific options (stroke, markers, etc.)
+    stroke: {
+      curve: 'smooth', // makes the lines smoother
+      width: 3, // line thickness
+    },
+    markers: {
+      size: 4, // marker size for each data point
+      hover: {
+        size: 6,
+      },
+    },
+    dataLabels: {
+      enabled: false, // or `true` if you want numeric labels on each point
+    },
+    // Remove or ignore any bar-specific options here
+    // e.g., plotOptions.bar is not needed for line charts
+    ...chart.options,
   });
 
-  const handleChangeSeries = useCallback(
-    (newValue) => {
-      popover.onClose();
-      setSeriesData(newValue);
-    },
-    [popover]
-  );
+  const handleChangeUsers = (event) => {
+    const value = event.target.value;
+    setSelectedUsers(value);
+    onUserChange(value);
+  };
 
   return (
     <>
@@ -46,50 +93,33 @@ export default function EcommerceYearlySales({ title, subheader, chart, ...other
         <CardHeader
           title={title}
           subheader={subheader}
-          sx={{ pt: 1 }}
           action={
-            <ButtonBase
-              onClick={popover.onOpen}
-              sx={{
-                pl: 1,
-                py: 0.5,
-                pr: 0.5,
-                borderRadius: 1,
-                typography: 'subtitle2',
-                bgcolor: 'background.neutral',
-              }}
-            >
-              {seriesData}
-
-              <Iconify
-                width={16}
-                icon={popover.open ? 'eva:arrow-ios-upward-fill' : 'eva:arrow-ios-downward-fill'}
-                sx={{ ml: 0.5 }}
-              />
-            </ButtonBase>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Select Users</InputLabel>
+                <Select
+                  multiple
+                  value={selectedUsers}
+                  onChange={handleChangeUsers}
+                  renderValue={(selected) => selected.join(', ')}
+                  label="Select Users"
+                >
+                  {availableUsers.map((user) => (
+                    <MenuItem key={user.id} value={user.name}>
+                      <Checkbox checked={selectedUsers.indexOf(user.name) > -1} />
+                      <ListItemText primary={user.name} />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
           }
         />
-
-        {series.map((item) => (
-          <Box key={item.year} sx={{ mt: 3, mx: 3 }}>
-            {item.year === seriesData && (
-              <Chart dir="ltr" type="area" series={item.data} options={chartOptions} height={170} />
-            )}
-          </Box>
-        ))}
+        {/* 4) Change the chart type to "line" */}
+        <Box sx={{ mt: 5, mx: 5, position: 'relative', overflow: 'visible' }}>
+          <Chart type="line" series={chart.series} options={chartOptions} height={190} />
+        </Box>
       </Card>
-
-      <CustomPopover open={popover.open} onClose={popover.onClose} sx={{ width: 140 }}>
-        {series.map((option) => (
-          <MenuItem
-            key={option.year}
-            selected={option.year === seriesData}
-            onClick={() => handleChangeSeries(option.year)}
-          >
-            {option.year}
-          </MenuItem>
-        ))}
-      </CustomPopover>
     </>
   );
 }
@@ -98,4 +128,11 @@ EcommerceYearlySales.propTypes = {
   chart: PropTypes.object,
   subheader: PropTypes.string,
   title: PropTypes.string,
+  availableUsers: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      name: PropTypes.string,
+    })
+  ),
+  onUserChange: PropTypes.func,
 };

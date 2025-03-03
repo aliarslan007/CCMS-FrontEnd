@@ -1,7 +1,7 @@
 import isEqual from 'lodash/isEqual';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 // @mui
-import { Box, Typography , Grid} from '@mui/material';
+import { Box, Grid, Typography } from '@mui/material';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Container from '@mui/material/Container';
@@ -31,8 +31,10 @@ import {
   useTable,
 } from 'src/components/table';
 //
+import PropTypes from 'prop-types';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 import UserTableToolbar from '../profile-table-toolbar';
 import UserTableFiltersResult from '../user-table-filters-result';
 import UserTableRow from '../user-table-row';
@@ -58,7 +60,7 @@ const defaultFilters = {
 
 // ----------------------------------------------------------------------
 
-export default function UserListView() {
+export default function UserListView({ moduleName }) {
   const table = useTable();
 
   const settings = useSettingsContext();
@@ -81,8 +83,15 @@ export default function UserListView() {
 
   const [selectedCompanyTypes, setSelectedCompanyTypes] = useState(filters?.companyType || []);
 
+  const logSentRef = useRef(false);
+
   useEffect(() => {
     const fetchUsers = async () => {
+      if (!logSentRef.current) {
+        const dynamicModuleName = moduleName || 'CCMS USER MANAGMENT';
+        logActivity('User access View Users List', dynamicModuleName);
+        logSentRef.current = true;
+      }
       setLoading(true);
 
       try {
@@ -97,7 +106,7 @@ export default function UserListView() {
       }
     };
     fetchUsers();
-  }, []);
+  }, [moduleName]);
 
   // Handle Inactive Profiles
   const handleMarkInactive = async () => {
@@ -123,6 +132,7 @@ export default function UserListView() {
       };
 
       await axiosInstance.patch(url, data);
+      logActivity('User inactive a userprofile', moduleName || 'CCMS USER MANAGEMENT');
       enqueueSnackbar('Selected User marked as inactive', { variant: 'success' });
       setUsers((prevUsers) =>
         prevUsers.filter((user) => !selectedIds.map((s) => s.id).includes(user.id))
@@ -270,7 +280,7 @@ export default function UserListView() {
 
   return (
     <>
-      <Container maxWidth=""sx={{ paddingBottom: '60px' }}>
+      <Container maxWidth="" sx={{ paddingBottom: '60px' }}>
         <CustomBreadcrumbs
           heading="Profiles"
           links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'profiles' }]}
@@ -407,25 +417,46 @@ export default function UserListView() {
       />
       <Box>
         <Grid container>{/* Your content */}</Grid>
+
         <Box
           component="footer"
           sx={{
             marginTop: '70px',
             display: 'flex',
-            justifyContent: 'center',
+            justifyContent: 'flex-end',
             alignItems: 'center',
             height: '50px',
-            left: '170px',
             position: 'fixed',
             bottom: 0,
-            width: '80%',
+            left: '-50px',
+            width: '100%',
+            maxWidth: '1520px',
+            margin: 'auto',
             zIndex: 1300,
             backgroundColor: 'white',
+            padding: '10px',
+            paddingRight: '50px',
+
+            // Responsive styling
+            '@media (max-width: 1024px)': {
+              justifyContent: 'center',
+              paddingRight: '20px',
+            },
+
+            '@media (max-width: 600px)': {
+              justifyContent: 'center',
+              left: '0',
+              width: '100%',
+              padding: '10px 15px',
+            },
           }}
         >
           <Typography variant="body2" color="textSecondary">
             &copy; {new Date().getFullYear()}
-            <strong>www.SoluComp.com</strong> v1.0
+            <span style={{ marginLeft: '5px' }}>
+              <strong>www.SoluComp.com</strong>
+            </span>
+            v1.0
           </Typography>
         </Box>
       </Box>
@@ -464,3 +495,7 @@ function applyFilter({ inputData, comparator, filters }) {
 
   return inputData;
 }
+
+UserListView.propTypes = {
+  moduleName: PropTypes.string,
+};

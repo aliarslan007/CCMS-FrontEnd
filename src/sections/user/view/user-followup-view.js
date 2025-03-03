@@ -1,5 +1,5 @@
 import isEqual from 'lodash/isEqual';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 // @mui
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -29,8 +29,10 @@ import {
   useTable,
 } from 'src/components/table';
 //
+import PropTypes from 'prop-types';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 import UserTableToolbar from '../followup-table-toolbar';
 import UserTableFiltersResult from '../user-table-filters-result';
 import UserTableRow from '../user-table-row-contact';
@@ -55,7 +57,7 @@ const defaultFilters = {
 
 // ----------------------------------------------------------------------
 
-export default function OverviewContactAccountView() {
+export default function OverviewContactAccountView({ moduleName }) {
   const table = useTable();
 
   const settings = useSettingsContext();
@@ -78,8 +80,15 @@ export default function OverviewContactAccountView() {
 
   const [selectedCompanyTypes, setSelectedCompanyTypes] = useState(filters?.companyType || []);
 
+  const logSentRef = useRef(false);
+
   useEffect(() => {
     const fetchFollowUps = async () => {
+      if (!logSentRef.current) {
+        const dynamicModuleName = moduleName || 'FOLLOW UPS';
+        logActivity('User view follow ups', dynamicModuleName);
+        logSentRef.current = true;
+      }
       setLoading(true);
       const userId = sessionStorage.getItem('userid');
 
@@ -104,7 +113,7 @@ export default function OverviewContactAccountView() {
     };
 
     fetchFollowUps();
-  }, []);
+  }, [moduleName]);
 
   // Handle Filter For Contacts
   const handleTypeChange = async (updatedTypes) => {
@@ -396,3 +405,7 @@ function applyFilter({ inputData, comparator, filters }) {
 
   return inputData;
 }
+
+OverviewContactAccountView.propTypes = {
+  moduleName: PropTypes.string,
+};

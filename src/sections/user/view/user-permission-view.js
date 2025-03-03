@@ -1,5 +1,5 @@
 import isEqual from 'lodash/isEqual';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 // @mui
 import Button from '@mui/material/Button';
@@ -46,8 +46,10 @@ import { useRouter } from 'src/routes/hooks';
 //
 
 import { methods } from 'lodash';
+import PropTypes from 'prop-types';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 import UserTableToolbar from '../profile-table-toolbar';
 import UserTableFiltersResult from '../user-table-filters-result';
 import UserTableRow from '../user-table-row';
@@ -87,7 +89,7 @@ const defaultFilters = {
 
 // ----------------------------------------------------------------------
 
-export default function UserPermissionView() {
+export default function UserPermissionView({ moduleName }) {
   const navigate = useNavigate();
 
   const handleAvatarClick = () => {
@@ -154,7 +156,7 @@ export default function UserPermissionView() {
 
   const [currentPage, setCurrentPage] = useState(1);
 
-  const itemsPerPage = 10;
+  const itemsPerPage = 100;
 
   const startIndex = (currentPage - 1) * itemsPerPage;
 
@@ -170,8 +172,16 @@ export default function UserPermissionView() {
 
   const [isSalesRepSalesManager, setIsSalesRepSalesManager] = useState(false);
 
+  const logSentRef = useRef(false);
+
   useEffect(() => {
     const fetchUsers = async () => {
+      if (!logSentRef.current) {
+        const dynamicModuleName = moduleName || 'PERMISSION CONTROL';
+        logActivity('User view sale representative settings', dynamicModuleName);
+        logSentRef.current = true;
+      }
+
       setLoading(true);
       const userId = sessionStorage.getItem('userid');
       const role = sessionStorage.getItem('userRole');
@@ -226,30 +236,12 @@ export default function UserPermissionView() {
       }
     };
     fetchUsers();
-  }, []);
+  }, [moduleName]);
 
   useEffect(() => {
     const storedRole = sessionStorage.getItem('userRole');
     setUserRole(storedRole);
   }, []);
-
-  const handleStateChange = (stateId) => {
-    if (stateProvince.includes(stateId)) {
-      setStateProvince(stateProvince.filter((id) => id !== stateId));
-    } else {
-      setStateProvince([...stateProvince, stateId]);
-    }
-  };
-
-  const handleSelectAll = () => {
-    if (selectAll) {
-      setStateProvince([]);
-      setSelectAll(false);
-    } else {
-      setStateProvince(statesList.map((state) => state.id));
-      setSelectAll(true);
-    }
-  };
 
   const handleTypeChange = async (updatedTypes) => {
     setSelectedCompanyTypes(updatedTypes);
@@ -339,6 +331,7 @@ export default function UserPermissionView() {
   };
 
   const handleAddRecord = async () => {
+    logActivity('add assign record permissions to user', moduleName || 'PERMISSION CONTROL');
     if (!salesManager && !isSalesRepSalesManager) {
       enqueueSnackbar('Please select a Sales Manager before adding the record.', {
         variant: 'warning',
@@ -478,7 +471,7 @@ export default function UserPermissionView() {
   };
 
   return (
-    <Container maxWidth="">
+    <Container maxWidth="" sx={{ mb: 3.5 }}>
       {/* Existing Table and Content */}
       <CustomBreadcrumbs
         heading="Permissions"
@@ -717,7 +710,7 @@ export default function UserPermissionView() {
             <Grid container spacing={2}>
               <Grid item xs={12} md={3}>
                 <FormControl fullWidth>
-                  <InputLabel>Select Sales Representative</InputLabel>
+                  <InputLabel>Select Users</InputLabel>
                   <Select
                     value={salesRep}
                     onChange={async (e) => {
@@ -788,7 +781,7 @@ export default function UserPermissionView() {
                         </MenuItem>
                       ))
                     ) : (
-                      <MenuItem disabled>No Sales Representatives available</MenuItem>
+                      <MenuItem disabled>No Users available</MenuItem>
                     )}
                   </Select>
                 </FormControl>
@@ -876,7 +869,19 @@ export default function UserPermissionView() {
                   <Select
                     multiple
                     value={stateProvince}
-                    onChange={(e) => setStateProvince(e.target.value)}
+                    onChange={(e) => {
+                      const selectedValues = e.target.value;
+
+                      if (selectedValues.includes('all')) {
+                        setStateProvince(
+                          stateProvince.length === visibleStates.length
+                            ? []
+                            : visibleStates.map((state) => state.name)
+                        );
+                      } else {
+                        setStateProvince(selectedValues);
+                      }
+                    }}
                     label="Select State/Province"
                     renderValue={(selected) => {
                       const selectedStates = statesList.filter((state) =>
@@ -888,10 +893,16 @@ export default function UserPermissionView() {
                     }}
                     MenuProps={{
                       PaperProps: {
-                        style: { maxHeight: 300, overflow: 'auto' }, // Custom height for dropdown
+                        style: { maxHeight: 300, overflow: 'auto' },
                       },
                     }}
                   >
+                    {/* Select All Option */}
+                    <MenuItem value="all">
+                      <Checkbox checked={stateProvince.length === visibleStates.length} />
+                      <ListItemText primary="Select All" />
+                    </MenuItem>
+
                     {/* Render Visible States */}
                     {visibleStates.map((state) => (
                       <MenuItem key={state.id} value={state.name}>
@@ -899,36 +910,6 @@ export default function UserPermissionView() {
                         <ListItemText primary={`${state.name} (${state.country})`} />
                       </MenuItem>
                     ))}
-
-                    {/* Pagination Controls */}
-                    <MenuItem disableRipple>
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        width="100%"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button
-                          variant="text"
-                          size="small"
-                          disabled={currentPage === 1}
-                          onClick={handlePreviousPage}
-                        >
-                          Previous
-                        </Button>
-                        <Typography variant="body2" sx={{ alignSelf: 'center' }}>
-                          Page {currentPage}
-                        </Typography>
-                        <Button
-                          variant="text"
-                          size="small"
-                          disabled={endIndex >= statesList.length}
-                          onClick={handleNextPage}
-                        >
-                          Next
-                        </Button>
-                      </Box>
-                    </MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -1045,26 +1026,50 @@ export default function UserPermissionView() {
           </Card>
         </Grid>
       </Grid>
-      <Box
-        component="footer"
-        sx={{
-          marginTop: '3px',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '50px',
-          right: '35px',
-          position: 'sticky',
-          bottom: 0,
-          width: '80%',
-          zIndex: 1300,
-          backgroundColor: 'white',
-        }}
-      >
-        <Typography variant="body2" color="textSecondary">
-          &copy; {new Date().getFullYear()}
-          <strong>www.SoluComp.com</strong> v1.0
-        </Typography>
+      <Box>
+        <Grid container>{/* Your content */}</Grid>
+
+        <Box
+          component="footer"
+          sx={{
+            marginTop: '70px',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            height: '50px',
+            position: 'fixed',
+            bottom: 0,
+            left: '-50px',
+            width: '100%',
+            maxWidth: '1520px',
+            margin: 'auto',
+            zIndex: 1300,
+            backgroundColor: 'white',
+            padding: '10px',
+            paddingRight: '50px',
+
+            // Responsive styling
+            '@media (max-width: 1024px)': {
+              justifyContent: 'center',
+              paddingRight: '20px',
+            },
+
+            '@media (max-width: 600px)': {
+              justifyContent: 'center',
+              left: '0',
+              width: '100%',
+              padding: '10px 15px',
+            },
+          }}
+        >
+          <Typography variant="body2" color="textSecondary">
+            &copy; {new Date().getFullYear()}
+            <span style={{ marginLeft: '5px' }}>
+              <strong>www.SoluComp.com</strong>
+            </span>
+            v1.0
+          </Typography>
+        </Box>
       </Box>
     </Container>
   );
@@ -1101,3 +1106,7 @@ function applyFilter({ inputData, comparator, filters }) {
 
   return inputData;
 }
+
+UserPermissionView.propTypes = {
+  moduleName: PropTypes.string,
+};

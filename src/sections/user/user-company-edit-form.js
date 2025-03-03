@@ -1,6 +1,6 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import PropTypes from 'prop-types';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import * as Yup from 'yup';
 // @mui
@@ -15,15 +15,7 @@ import Grid from '@mui/material/Unstable_Grid2';
 // assets
 import { countries } from 'src/assets/data';
 // components
-import {
-  Button,
-  Checkbox,
-  FormControl,
-  InputLabel,
-  ListItemText,
-  MenuItem,
-  Select,
-} from '@mui/material';
+import { Checkbox, FormControl, InputLabel, ListItemText, MenuItem, Select } from '@mui/material';
 import imageCompression from 'browser-image-compression';
 import FormProvider, {
   RHFAutocomplete,
@@ -33,6 +25,7 @@ import FormProvider, {
 import Iconify from 'src/components/iconify';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 
 // ----------------------------------------------------------------------
 // Initial dropdown options
@@ -50,24 +43,7 @@ const companyTypes = [
   'Misc.',
 ];
 
-const stateProvinces = [
-  // U.S. States
-  'Alabama',
-  'Alaska',
-  'Arizona',
-  'Arkansas',
-  'California',
-  'Colorado',
-  'Connecticut',
-  'Delaware',
-  'Florida',
-  'Georgia',
-  'Hawaii',
-  'Idaho',
-  'Illinois',
-];
-
-export default function UserCompanyEditForm() {
+export default function UserCompanyEditForm({ moduleName }) {
   const { enqueueSnackbar } = useSnackbar();
 
   const [isCompressing, setIsCompressing] = useState(false);
@@ -80,7 +56,11 @@ export default function UserCompanyEditForm() {
 
   const [currentPage, setCurrentPage] = useState(1);
 
-  const itemsPerPage = 10;
+  const itemsPerPage = 100;
+
+  const [phoneNumber, setPhoneNumber] = useState('');
+
+  const logSentRef = useRef(false);
 
   useEffect(() => {
     const fetchStates = async () => {
@@ -94,6 +74,13 @@ export default function UserCompanyEditForm() {
 
     fetchStates();
   }, []);
+
+  const handlePhoneNumberChange = (event) => {
+    const input = event.target.value;
+    const formattedPhoneNumber = input && !input.startsWith('+') ? `+${input}` : input; // Ternary operator
+
+    setPhoneNumber(formattedPhoneNumber);
+  };
 
   const NewUserSchema = Yup.object().shape({
     company_name: Yup.string().required('Company name is required'),
@@ -142,6 +129,11 @@ export default function UserCompanyEditForm() {
   const values = watch();
 
   const handleSaveChanges = async (data) => {
+    if (!logSentRef.current) {
+      const dynamicModuleName = moduleName || 'CLIENT ACCOUNT MANAGMENT';
+      logActivity('User creates a new Company', dynamicModuleName);
+      logSentRef.current = true;
+    }
     const formData = new FormData();
     const token = sessionStorage.getItem('authToken');
 
@@ -154,7 +146,7 @@ export default function UserCompanyEditForm() {
     formData.append('city', data.city);
     formData.append('country', data.country);
     formData.append('zip', data.zip);
-    formData.append('phone_number', data.phone_number);
+    formData.append('phone_number', phoneNumber);
     formData.append('website', data.website);
     formData.append('facebook_url', data.facebook_url);
     formData.append('linkedin_url', data.linkedin_url);
@@ -164,7 +156,7 @@ export default function UserCompanyEditForm() {
     if (selectedStates.length > 0) {
       formData.append('state', selectedStates.join(','));
     } else {
-      formData.append('state', ''); // Send empty if no states selected
+      formData.append('state', '');
     }
 
     formData.append('_method', 'POST');
@@ -178,7 +170,7 @@ export default function UserCompanyEditForm() {
       });
 
       enqueueSnackbar('Company created successfully', { variant: 'success' });
-      window.location.reload();
+      // window.location.reload();
     } catch (error) {
       console.error('Error details:', error.response ? error.response.data : error);
 
@@ -368,6 +360,14 @@ export default function UserCompanyEditForm() {
                   value={selectedStates}
                   onChange={handleChange}
                   renderValue={(selected) => selected.join(', ')}
+                  MenuProps={{
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300,
+                        overflowY: 'auto',
+                      },
+                    },
+                  }}
                 >
                   <MenuItem value="all">
                     <Checkbox checked={isAllSelected} />
@@ -379,25 +379,15 @@ export default function UserCompanyEditForm() {
                       <ListItemText primary={`${state.name} (${state.country})`} />
                     </MenuItem>
                   ))}
-                  <Box display="flex" justifyContent="space-between" p={1}>
-                    <Button size="small" disabled={currentPage === 1} onClick={handlePrevPage}>
-                      Previous
-                    </Button>
-                    <Button
-                      size="small"
-                      disabled={currentPage === totalPages}
-                      onClick={handleNextPage}
-                    >
-                      Next
-                    </Button>
-                  </Box>
                 </Select>
               </FormControl>
               <RHFTextField name="zip" label="Zip Code/Postal Code" />
               <RHFTextField
                 name="phone_number"
                 label="Main Phone Number"
-                placeholder="+1 234 567-8901"
+                placeholder="12345678901"
+                value={phoneNumber}
+                onChange={handlePhoneNumberChange}
               />
               <RHFTextField name="website" label="Website" placeholder="www.example.com" />
               <RHFTextField
@@ -412,7 +402,7 @@ export default function UserCompanyEditForm() {
               />
             </Box>
 
-            <Stack alignItems="flex-end" sx={{ mt: 3 }}>
+            <Stack alignItems="flex-end" sx={{ mb: 3.5 }}>
               <LoadingButton
                 variant="contained"
                 onClick={(e) => {
@@ -426,26 +416,50 @@ export default function UserCompanyEditForm() {
           </Card>
         </Grid>
       </Grid>
-      <Box
-        component="footer"
-        sx={{
-          marginTop: '3px',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '50px',
-          right: '35px',
-          position: 'sticky',
-          bottom: 0,
-          width: '80%',
-          zIndex: 1300,
-          backgroundColor: 'white',
-        }}
-      >
-        <Typography variant="body2" color="textSecondary">
-          &copy; {new Date().getFullYear()}
-          <strong>www.SoluComp.com</strong> v1.0
-        </Typography>
+      <Box>
+        <Grid container>{/* Your content */}</Grid>
+
+        <Box
+          component="footer"
+          sx={{
+            marginTop: '70px',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            height: '50px',
+            position: 'fixed',
+            bottom: 0,
+            left: '-50px',
+            width: '100%',
+            maxWidth: '1520px',
+            margin: 'auto',
+            zIndex: 1300,
+            backgroundColor: 'white',
+            padding: '10px',
+            paddingRight: '50px',
+
+            // Responsive styling
+            '@media (max-width: 1024px)': {
+              justifyContent: 'center',
+              paddingRight: '20px',
+            },
+
+            '@media (max-width: 600px)': {
+              justifyContent: 'center',
+              left: '0',
+              width: '100%',
+              padding: '10px 15px',
+            },
+          }}
+        >
+          <Typography variant="body2" color="textSecondary">
+            &copy; {new Date().getFullYear()}
+            <span style={{ marginLeft: '5px' }}>
+              <strong>www.SoluComp.com</strong>
+            </span>
+            v1.0
+          </Typography>
+        </Box>
       </Box>
     </FormProvider>
   );
@@ -453,4 +467,5 @@ export default function UserCompanyEditForm() {
 
 UserCompanyEditForm.propTypes = {
   currentUser: PropTypes.object,
+  moduleName: PropTypes.string,
 };

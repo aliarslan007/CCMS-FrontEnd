@@ -14,14 +14,16 @@ import {
 } from '@mui/material';
 import ButtonBase from '@mui/material/ButtonBase';
 import { Container } from '@mui/system';
-import { useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { logActivity } from 'src/utils/log-activity';
 import { useAuth } from '../../../auth/context/jwt/auth-context';
 import { paths } from '../../../routes/paths';
 
-export default function CompanyContactDetails() {
+export default function CompanyContactDetails({ moduleName }) {
   const { id } = useParams();
   const [company, setCompanyaccount] = useState(null);
   const navigate = useNavigate();
@@ -34,6 +36,7 @@ export default function CompanyContactDetails() {
   const [contact, setCompanyContacts] = useState([]);
   const [userAccess, setUserAccess] = useState('');
   const { logout } = useAuth();
+  const logSentRef = useRef(false);
 
   const getBorderRadius = (index) => {
     if (index === 0) return '10px 0 0 10px';
@@ -43,6 +46,11 @@ export default function CompanyContactDetails() {
 
   useEffect(() => {
     const fetchDetailsAndStatus = async () => {
+      if (!logSentRef.current) {
+        const dynamicModuleName = moduleName || 'COMPANY DETAILS PAGE';
+        logActivity('User view company details', dynamicModuleName);
+        logSentRef.current = true;
+      }
       setLoading(true);
       const flag = 'companycontacts';
       const token = sessionStorage.getItem('authToken');
@@ -68,7 +76,7 @@ export default function CompanyContactDetails() {
     };
 
     fetchDetailsAndStatus();
-  }, [id, enqueueSnackbar]);
+  }, [id, moduleName, enqueueSnackbar]);
 
   useEffect(() => {
     const flag = true;
@@ -201,6 +209,9 @@ export default function CompanyContactDetails() {
         sale_rep_name: `${company.full_name} ${company.last_name}`,
       };
       const response = await axiosInstance.post(endpoints.markdelete.marked(company.id), payload);
+      logActivity('User marked a company for delete', moduleName || 'COMPANIES DETAILS PAGE', {
+        identification: company.company_name,
+      });
       enqueueSnackbar(response.data.message, { variant: 'success' });
       setIsMarked(true);
       localStorage.setItem(`markedForDeletion-${id}`, 'true');
@@ -350,7 +361,7 @@ export default function CompanyContactDetails() {
                     <Typography
                       sx={{ color: 'rgba(107, 119, 154, 1)', fontSize: '14px', marginLeft: '3px' }}
                     >
-                      {company.linkedin_url || 'Company Type Name Not Available'}
+                      {company.linkedin_url || 'LinkedIn Not Available'}
                     </Typography>
                   </Typography>
                   <Typography
@@ -707,7 +718,7 @@ export default function CompanyContactDetails() {
                         'Last Name',
                         'Phone Number',
                         'Email Address',
-                        'Report To',
+                        'Region',
                         'Title',
                         // 'Assigned To',
                       ].map((heading, index) => (
@@ -757,10 +768,10 @@ export default function CompanyContactDetails() {
                           {row.office_email}
                         </TableCell>
                         <TableCell sx={{ padding: '10px 15px', textAlign: 'center' }}>
-                          {row.reports_to}
+                          {row.region}
                         </TableCell>
                         <TableCell sx={{ padding: '10px 15px', textAlign: 'center' }}>
-                          {row.responsibilities}
+                          {row.title}
                         </TableCell>
                         <TableCell sx={{ padding: '10px 15px', textAlign: 'center' }}>
                           {row.fullname}
@@ -777,3 +788,6 @@ export default function CompanyContactDetails() {
     </>
   );
 }
+CompanyContactDetails.propTypes = {
+  moduleName: PropTypes.string,
+};

@@ -34,6 +34,10 @@ const InactiveListPage = lazy(() => import('src/pages/dashboard/user/inactivelis
 const DeletePage = lazy(() => import('src/pages/dashboard/user/deletion'));
 const OrgChartPage = lazy(() => import('src/pages/dashboard/user/orgchart'));
 const PermissionPage = lazy(() => import('src/pages/dashboard/user/permission'));
+const PiplinePage = lazy(() => import('src/pages/dashboard/user/pipline'));
+const TargetPage = lazy(() => import('src/pages/dashboard/user/target'));
+const NotificationPage = lazy(() => import('src/pages/dashboard/user/notification'));
+const GenSalesPage = lazy(() => import('src/pages/dashboard/user/gensales'));
 const FollowupPage = lazy(() => import('src/pages/dashboard/user/followup'));
 const CompanyDetailsInfo = lazy(() => import('src/pages/dashboard/user/companydetailsinfo'));
 const CompanyDetailsInfoEdit = lazy(() =>
@@ -61,35 +65,37 @@ export const dashboardRoutes = [
     ),
     children: [
       { element: <IndexPage />, index: true },
-      { 
-        path: 'ecommerce', 
+      {
+        path: 'ecommerce',
         element: (
           <ProtectedRoute allowedRoles={['Admin', 'Sales Manager', 'Sales Representative']}>
             <OverviewEcommercePage />
           </ProtectedRoute>
-        ) 
+        ),
       },
-      { path: 'analytics', element:(
+      {
+        path: 'analytics',
+        element: (
           <ProtectedRoute allowedRoles={['Admin']}>
-            <OverviewAnalyticsPage /> 
+            <OverviewAnalyticsPage />
           </ProtectedRoute>
-      )
-         },
-      { 
-        path: 'analytics', 
-        element: (
-          <ProtectedRoute allowedRoles={['Admin','Sales Manager','Sales Representative']}>
-            <OverviewSalesListPage />
-          </ProtectedRoute>
-        ) 
+        ),
       },
-       { 
-        path: 'saleslist', 
+      {
+        path: 'analytics',
         element: (
-          <ProtectedRoute allowedRoles={['Admin','Sales Manager', 'Sales Representative']}>
+          <ProtectedRoute allowedRoles={['Admin', 'Sales Manager', 'Sales Representative']}>
             <OverviewSalesListPage />
           </ProtectedRoute>
-        ) 
+        ),
+      },
+      {
+        path: 'saleslist',
+        element: (
+          <ProtectedRoute allowedRoles={['Admin', 'Sales Manager', 'Sales Representative']}>
+            <OverviewSalesListPage />
+          </ProtectedRoute>
+        ),
       },
       { path: 'file', element: <OverviewFilePage /> },
       {
@@ -98,118 +104,150 @@ export const dashboardRoutes = [
           { element: <UserProfilePage />, index: true },
           { path: 'profile', element: <UserProfilePage /> },
           { path: 'cards', element: <UserCardsPage /> },
-          { 
-            path: 'list', 
+          {
+            path: 'list',
             element: (
               <ProtectedRoute allowedRoles={['Admin']}>
                 <UserListPage />
               </ProtectedRoute>
-            ) 
+            ),
           },
-          { 
-            path: 'companylist', 
+          {
+            path: 'companylist',
             element: (
               <ProtectedRoute allowedRoles={['Admin']}>
                 <CompanyListPage />
               </ProtectedRoute>
-            ) 
+            ),
           },
-          { 
-            path: 'contactaccount', 
+          {
+            path: 'contactaccount',
             element: (
               <ProtectedRoute allowedRoles={['Admin']}>
                 <ContactAccount />
               </ProtectedRoute>
-            ) 
+            ),
           },
-          { 
-            path: 'new', 
+          {
+            path: 'new',
             element: (
               <ProtectedRoute allowedRoles={['Admin']}>
                 <UserCreatePage />
               </ProtectedRoute>
-            ) 
+            ),
           },
-          { 
-            path: 'company', 
+          {
+            path: 'company',
             element: (
-              <ProtectedRoute allowedRoles={['Admin','Sales Representative','Sales Manager']}>
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Representative', 'Sales Manager']}>
                 <UserCompanyPage />
               </ProtectedRoute>
-            ) 
+            ),
           },
-          { 
-            path: 'companycontact/:id', 
+          {
+            path: 'companycontact/:id',
             element: (
-              <ProtectedRoute allowedRoles={['Admin','Sales Representative']}>
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Representative']}>
                 <UserCompanyContactPage />
               </ProtectedRoute>
-            ) 
+            ),
           },
-          { 
-            path: 'companycontacts', 
+          {
+            path: 'companycontacts',
             element: (
-              <ProtectedRoute allowedRoles={['Admin','Sales Representative','Sales Manager']}>
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Representative', 'Sales Manager']}>
                 <UserCompanyContactPage />
               </ProtectedRoute>
-            ) 
+            ),
           },
-          { path: 'companycontactdetailsedit/:id', element: <AccountGeneral/> },
-          { path: 'companycontactdetails/:id', element: <CompanyContactDetails/> },
-          { path: 'companydetailsinfo/:id', element: <CompanyDetailsInfo/> },
-          { path: 'companydetailsinfoedit/:id', element: <CompanyDetailsInfoEdit/> },
-          { path: 'userdetails', element: <UserDetails/> },
-          { path: 'followup', element: <FollowupPage/> },
-          { 
-            path: 'mycompany', 
+          { path: 'companycontactdetailsedit/:id', element: <AccountGeneral /> },
+          { path: 'companycontactdetails/:id', element: <CompanyContactDetails /> },
+          { path: 'companydetailsinfo/:id', element: <CompanyDetailsInfo /> },
+          { path: 'companydetailsinfoedit/:id', element: <CompanyDetailsInfoEdit /> },
+          { path: 'userdetails', element: <UserDetails /> },
+          { path: 'followup', element: <FollowupPage /> },
+          {
+            path: 'mycompany',
             element: (
               <ProtectedRoute allowedRoles={['Admin']}>
                 <MyCompany />
               </ProtectedRoute>
-            ) 
+            ),
           },
-          { 
-            path: 'inactivelist', 
+          {
+            path: 'inactivelist',
             element: (
-              <ProtectedRoute allowedRoles={['Admin']}>
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Manager']}>
                 <InactiveListPage />
               </ProtectedRoute>
-            ) 
+            ),
           },
-          { 
-            path: 'orgchartpage', 
+          {
+            path: 'orgchartpage',
             element: (
-              <ProtectedRoute allowedRoles={['Admin','Sales Manager', 'Sales Representative']}>
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Manager', 'Sales Representative']}>
                 <OrgChartPage />
               </ProtectedRoute>
-            ) 
+            ),
           },
-          { 
-            path: 'deletion', 
+          {
+            path: 'deletion',
             element: (
-              <ProtectedRoute allowedRoles={['Admin']}>
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Manager']}>
                 <DeletePage />
               </ProtectedRoute>
-            ) 
+            ),
           },
-          { path: 'orgchart', element: <OrgChartPage/> },
-          { 
-            path: 'permission', 
+          { path: 'orgchart', element: <OrgChartPage /> },
+          {
+            path: 'permission',
             element: (
-              <ProtectedRoute allowedRoles={['Admin','Sales Manager']}>
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Manager']}>
                 <PermissionPage />
               </ProtectedRoute>
-            ) 
+            ),
           },
-          
+          {
+            path: 'pipline',
+            element: (
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Manager', 'Sales Representative']}>
+                <PiplinePage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: 'target',
+            element: (
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Manager', 'Sales Representative']}>
+                <TargetPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: 'notification',
+            element: (
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Manager', 'Sales Representative']}>
+                <NotificationPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: 'gensales',
+            element: (
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Manager', 'Sales Representative']}>
+                <GenSalesPage />
+              </ProtectedRoute>
+            ),
+          },
+
           { path: ':id/edit', element: <UserEditPage /> },
-          { 
-            path: 'account', 
+          {
+            path: 'account',
             element: (
               <ProtectedRoute allowedRoles={['Admin']}>
                 <UserAccountPage />
               </ProtectedRoute>
-            ) 
+            ),
           },
           { path: 'accountuser/:uuid', element: <UserAccountDetails /> },
         ],

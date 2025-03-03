@@ -15,19 +15,30 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material';
 import PropTypes from 'prop-types';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
 
-const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
-  const [duplicatesagain, setDuplicates] = useState([]); // Assuming this is your duplicates data
-  const [selectedDuplicates, setSelectedDuplicates] = useState([]);
+// Helper function to convert header to field name
+const getFieldName = (header) => {
+  if (header === 'First Name') return 'firstName';
+  if (header === 'Last Name') return 'lastName';
+  return 'mobilePhone';
+};
 
-  const { enqueueSnackbar } = useSnackbar();
-  if (!duplicates?.length) return null;
+const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
+  const [selectedDuplicates, setSelectedDuplicates] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [editedValues, setEditedValues] = useState({});
+  const [localDuplicates, setLocalDuplicates] = useState(duplicates);
+
+  useEffect(() => {
+    setLocalDuplicates(duplicates);
+  }, [duplicates]);
 
   const handleCheckboxChange = (event, duplicate) => {
     if (event.target.checked) {
@@ -37,11 +48,53 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
     }
   };
 
+  const handleEditClick = (duplicate) => {
+    setEditingId(duplicate.imported_record.id);
+    setEditedValues({
+      firstName: duplicate.imported_record['First Name'],
+      lastName: duplicate.imported_record['Last Name'],
+      mobilePhone: duplicate.imported_record['Mobile Phone'],
+    });
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setEditedValues({});
+  };
+
+  const handleSave = (duplicate) => {
+    try {
+      const updatedDuplicates = localDuplicates.map((d) =>
+        d.imported_record.id === duplicate.imported_record.id
+          ? {
+              ...d,
+              imported_record: {
+                ...d.imported_record,
+                'First Name': editedValues.firstName,
+                'Last Name': editedValues.lastName,
+                'Mobile Phone': editedValues.mobilePhone,
+              },
+            }
+          : d
+      );
+
+      setLocalDuplicates(updatedDuplicates); // Update local state
+      enqueueSnackbar('Changes saved successfully', { variant: 'success' });
+      handleCancel();
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      enqueueSnackbar('Failed to save changes', { variant: 'error' });
+    }
+  };
+
+  const { enqueueSnackbar } = useSnackbar();
+  if (!duplicates?.length) return null;
+
   const handleYesToAll = async () => {
     try {
       const payload = {
-        duplicates: duplicates.map((duplicate) => ({
-          imported_record: duplicate.imported_record,
+        duplicates: localDuplicates.map((dup) => ({
+          imported_record: dup.imported_record, // Use updated values
         })),
       };
 
@@ -59,7 +112,7 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
     try {
       const payload = {
         duplicates: selectedDuplicates.map((duplicate) => ({
-          imported_record: duplicate.imported_record,
+          imported_record: duplicate.imported_record, 
         })),
       };
 
@@ -72,6 +125,8 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
       enqueueSnackbar('Failed to process selected duplicates.', { variant: 'error' });
     }
   };
+
+  if (!localDuplicates?.length) return null;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
@@ -105,7 +160,7 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
       </Box>
 
       <DialogContent>
-        {duplicates.map((duplicate, index) => (
+        {localDuplicates.map((duplicate, index) => (
           <Box key={index} mb={4}>
             <Grid container spacing={2}>
               {/* Existing Record */}
@@ -163,7 +218,7 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
                       <TableRow>
                         <TableCell sx={{ fontWeight: 'bold' }}>Select</TableCell>
                         {/* Display only the selected fields in the header */}
-                        {['Client First Name', 'Client Last Name', 'Cell Phone 1'].map((key) => (
+                        {['First Name', 'Last Name', 'Mobile Phone', 'Edit'].map((key) => (
                           <TableCell
                             key={key}
                             sx={{ fontWeight: 'bold', textTransform: 'capitalize' }}
@@ -181,12 +236,58 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
                             onChange={(e) => handleCheckboxChange(e, duplicate)}
                           />
                         </TableCell>
-                        {/* Display only the selected fields in the body */}
-                        {['Client First Name', 'Client Last Name', 'Cell Phone 1'].map((key) => (
-                          <TableCell key={key} sx={{ wordBreak: 'break-word', maxWidth: '300px' }}>
-                            {duplicate.imported_record[key] || '-'}
-                          </TableCell>
-                        ))}
+                        {['First Name', 'Last Name', 'Mobile Phone'].map((key) => {
+                          const fieldName = getFieldName(key);
+                          return (
+                            <TableCell key={key}>
+                              {editingId === duplicate.imported_record.id ? (
+                                <TextField
+                                  value={editedValues[fieldName] || ''}
+                                  onChange={(e) =>
+                                    setEditedValues((prev) => ({
+                                      ...prev,
+                                      [fieldName]: e.target.value,
+                                    }))
+                                  }
+                                  size="small"
+                                  fullWidth
+                                />
+                              ) : (
+                                duplicate.imported_record[key] || '-'
+                              )}
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell>
+                          {editingId === duplicate.imported_record.id ? (
+                            <>
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => handleSave(duplicate)}
+                                sx={{ mr: 1 }}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={handleCancel}
+                                sx={{ mt: 2 }}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              onClick={() => handleEditClick(duplicate)}
+                            >
+                              Edit
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
