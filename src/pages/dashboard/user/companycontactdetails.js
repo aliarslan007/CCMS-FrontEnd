@@ -78,6 +78,8 @@ export default function CompanyContactDetails({ moduleName }) {
   const [openDetailDialog, setOpenDetailDialog] = useState(false);
   const logSentRef = useRef(false);
   const [loading, setLoading] = useState(true);
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
 
   useEffect(() => {
     const fetchProfileStatusAndFollowUps = async () => {
@@ -88,8 +90,8 @@ export default function CompanyContactDetails({ moduleName }) {
         logSentRef.current = true;
       }
       try {
-        const token = sessionStorage.getItem('authToken');
-        const userId = sessionStorage.getItem('uuid');
+        const token = localStorage.getItem('authToken');
+        const userId = localStorage.getItem('uuid');
         if (!userId) {
           console.error('User ID not found in SessionStorage');
           return;
@@ -102,7 +104,7 @@ export default function CompanyContactDetails({ moduleName }) {
 
         // Update with contact data first
         const contactResponse = await contactPromise;
-        setContact(contactResponse.data || []); 
+        setContact(contactResponse.data || []);
 
         // Then fetch profile data
         const profileResponse = await axiosInstance.get(endpoints.profile.details(userId), {
@@ -122,7 +124,6 @@ export default function CompanyContactDetails({ moduleName }) {
 
     fetchProfileStatusAndFollowUps();
   }, [id, moduleName]);
-  // Removed userAccess from dependencies
 
   useEffect(() => {
     const fetchMarkedStatus = async () => {
@@ -171,13 +172,12 @@ export default function CompanyContactDetails({ moduleName }) {
 
   const handleActionPermissionCheck = async (actionType) => {
     try {
-      const uuid = sessionStorage.getItem('uuid');
+      const uuid = localStorage.getItem('uuid');
       if (!uuid) {
-        console.error('User ID not found in sessionStorage');
+        console.error('User ID not found in localStorage');
         return;
       }
 
-      // Fetch the current user details again to get the most up-to-date access level
       const response = await axiosInstance.get(endpoints.profile.details(uuid));
       const fetchedUser = response.data;
       const { access, is_active } = fetchedUser;
@@ -204,7 +204,6 @@ export default function CompanyContactDetails({ moduleName }) {
   const fetchFollowUps = useCallback(async () => {
     if (!contact || contact.length === 0) return;
 
-    // Fetch follow-ups only if follow_up_flag is true
     try {
       if (contact[0].follow_up_flag) {
         const followUpsResponse = await axiosInstance.get(
@@ -220,7 +219,6 @@ export default function CompanyContactDetails({ moduleName }) {
       console.error('Error fetching follow-ups:', error);
     }
 
-    // Fetch files only if files_flag is true
     try {
       if (contact[0].files_flag) {
         const filesResponse = await axiosInstance.get(endpoints.files.list(contact[0]?.id));
@@ -286,7 +284,13 @@ export default function CompanyContactDetails({ moduleName }) {
 
   // Handle Mark Deletion
   const handleMarkForDelete = async () => {
-    const userId = sessionStorage.getItem('userid');
+    if (!deleteReason.trim()) {
+      enqueueSnackbar('Please add a reason before marking for deletion', {
+        variant: 'warning',
+      });
+      return;
+    }
+    const userId = localStorage.getItem('userid');
     try {
       const payload = {
         id: userId,
@@ -296,6 +300,7 @@ export default function CompanyContactDetails({ moduleName }) {
         title: contact[0]?.title,
         company_name: contact[0]?.company_name,
         sale_rep_name: contact[0]?.fullname,
+        deletion_reason: deleteReason,
       };
       const response = await axiosInstance.post(
         endpoints.markdelete.marked(contact[0]?.id),
@@ -308,7 +313,7 @@ export default function CompanyContactDetails({ moduleName }) {
       );
       enqueueSnackbar(response.data.message, { variant: 'success' });
       setIsMarked(true);
-      sessionStorage.setItem(`markedForDeletion-${id}`, 'true');
+      localStorage.setItem(`markedForDeletion-${id}`, 'true');
     } catch (error) {
       console.error('Error marking for deletion:', error);
       enqueueSnackbar(error.response?.data?.message || 'Failed to mark for deletion', {
@@ -318,7 +323,7 @@ export default function CompanyContactDetails({ moduleName }) {
   };
 
   useEffect(() => {
-    const userRole = sessionStorage.getItem('userRole');
+    const userRole = localStorage.getItem('userRole');
     setRole(userRole);
   }, []);
 
@@ -335,7 +340,7 @@ export default function CompanyContactDetails({ moduleName }) {
   };
 
   // Hanlde the Follow_up
-  const userId = sessionStorage.getItem('userid');
+  const userId = localStorage.getItem('userid');
   const handleSubmit = async () => {
     logActivity('User add notes to contact', moduleName || 'COMPANY CONTACT DETAILS PAGE', {
       identification: contact[0]?.client_first_name,
@@ -413,7 +418,7 @@ export default function CompanyContactDetails({ moduleName }) {
     logActivity('User add a follow-up date', moduleName || 'COMPANY CONTACT DETAILS PAGE', {
       identification: contact[0]?.client_first_name,
     });
-    const localUserAccess = sessionStorage.getItem('userid');
+    const localUserAccess = localStorage.getItem('userid');
     if (!localUserAccess) {
       enqueueSnackbar('User ID is missing. Please log in again.', { variant: 'error' });
       return;
@@ -579,21 +584,52 @@ export default function CompanyContactDetails({ moduleName }) {
             sx={{
               backgroundColor: isMarked ? '#ccc' : 'red',
               color: '#fff',
-              fontSize: '14px',
+              fontSize: '12px',
               fontWeight: '500',
               textTransform: 'none',
               marginRight: '10px',
-              borderRadius: '6px',
-              padding: '8px 16px',
               '&:hover': {
                 backgroundColor: '#cc0000',
               },
             }}
-            onClick={handleMarkForDelete}
+            // NEW: Open confirmation dialog instead of direct onClick call
+            onClick={() => setOpenConfirmDialog(true)}
             disabled={isMarked}
           >
             {buttonText}
           </Button>
+
+          {/* NEW: Confirmation Dialog */}
+          <Dialog open={openConfirmDialog} onClose={() => setOpenConfirmDialog(false)}>
+            <DialogTitle>Confirm Mark for Deletion</DialogTitle>
+            <DialogContent>
+              <div>
+                You are about to mark this record for deletion. Are you sure you want to proceed?
+              </div>
+              <TextField
+                autoFocus
+                margin="dense"
+                label="Reason"
+                type="text"
+                fullWidth
+                variant="standard"
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="Enter reason for deletion"
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setOpenConfirmDialog(false)}>No</Button>
+              <Button
+                onClick={async () => {
+                  setOpenConfirmDialog(false);
+                  await handleMarkForDelete();
+                }}
+              >
+                Yes
+              </Button>
+            </DialogActions>
+          </Dialog>
           <Button
             variant="contained"
             startIcon={
@@ -1149,8 +1185,6 @@ export default function CompanyContactDetails({ moduleName }) {
                             <TableCell sx={{ padding: '8px', fontSize: '14px' }}>
                               {row.file_path ? (
                                 <>
-                                  {console.log('File Path:', row.file_path)}{' '}
-                                  {/* Log the file path */}
                                   <a
                                     style={{
                                       color: '#007BFF',

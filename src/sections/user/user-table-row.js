@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 // @mui
 import { Box, Typography } from '@mui/material';
 import Avatar from '@mui/material/Avatar';
-import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import ListItemText from '@mui/material/ListItemText';
 import MenuItem from '@mui/material/MenuItem';
@@ -12,7 +11,6 @@ import TableRow from '@mui/material/TableRow';
 // hooks
 import { useBoolean } from 'src/hooks/use-boolean';
 // components
-import { ConfirmDialog } from 'src/components/custom-dialog';
 import CustomPopover, { usePopover } from 'src/components/custom-popover';
 import Iconify from 'src/components/iconify';
 import { paths } from '../../routes/paths';
@@ -76,7 +74,7 @@ export default function UserTableRow({
                     to={`/dashboard/user/companydetailsinfo/${company.uuid}`}
                     style={{ textDecoration: 'none', color: '#00A76F' }}
                   >
-                    {company.company_name} 
+                    {company.company_name}
                   </Link>
                   {index < row.company_names.length - 1 && ', '}
                 </span>
@@ -108,17 +106,6 @@ export default function UserTableRow({
       >
         <MenuItem
           onClick={() => {
-            confirm.onTrue();
-            popover.onClose();
-          }}
-          sx={{ color: 'error.main' }}
-        >
-          <Iconify icon="solar:trash-bin-trash-bold" />
-          Delete
-        </MenuItem>
-
-        <MenuItem
-          onClick={() => {
             onEditRow();
             popover.onClose();
           }}
@@ -127,18 +114,6 @@ export default function UserTableRow({
           Edit
         </MenuItem>
       </CustomPopover>
-
-      <ConfirmDialog
-        open={confirm.value}
-        onClose={confirm.onFalse}
-        title="Delete"
-        content="Are you sure want to delete?"
-        action={
-          <Button variant="contained" color="error" onClick={onDeleteRow}>
-            Delete
-          </Button>
-        }
-      />
     </>
   );
 }

@@ -5,17 +5,14 @@ import { useNavigate } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Container from '@mui/material/Container';
-import IconButton from '@mui/material/IconButton';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableContainer from '@mui/material/TableContainer';
-import Tooltip from '@mui/material/Tooltip';
 // routes
 import { useRouter } from 'src/routes/hooks';
 // import { useRouter } from 'src/routes/hooks';
 import { paths } from 'src/routes/paths';
 // _mock
-import { _userList } from 'src/_mock';
 // hooks
 import { useBoolean } from 'src/hooks/use-boolean';
 // components
@@ -32,7 +29,6 @@ import {
 } from '@mui/material';
 import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
 import { ConfirmDialog } from 'src/components/custom-dialog';
-import Iconify from 'src/components/iconify';
 import Scrollbar from 'src/components/scrollbar';
 import { useSettingsContext } from 'src/components/settings';
 import {
@@ -52,13 +48,11 @@ import UserTableRow from '../user-table-row-deletion';
 // ----------------------------------------------------------------------
 
 const TABLE_HEAD = [
-  // { id: '', label: 'ID', width: 150 },
-  // { id: '', label: 'Module', width: 180 },
-  { id: '', label: 'Representative Name', width: 180 },
-  { id: '', label: 'Company/Contact Name', width: 180 },
-  { id: '', label: 'Full Name', width: 180 },
-  { id: '', label: 'Title/Service', width: 180 },
-  // { id: '', label: 'Date&Time', width: 180 },
+  { id: 'marked_by_user_id', label: 'Marked By', width: 180 },
+  { id: 'company_name', label: 'Company Name', width: 180 },
+  { id: 'name', label: 'Company Type', width: 180 },
+  { id: 'reason', label: 'Reason', width: 180 },
+  { id: 'title', label: 'Created At', width: 180 },
   { id: '', width: 88 },
 ];
 
@@ -73,16 +67,18 @@ export default function UserDeleteView({ moduleName }) {
   const router = useRouter();
 
   const navigate = useNavigate();
-  const handleAvatarClick = () => {
-    navigate(paths.dashboard.user.companydetailsinfo);
-  };
-  const table = useTable();
+
+  const table = useTable({
+    onSortChange: (newOrder, newOrderBy) => {
+      fetchSortedData(newOrderBy, newOrder);
+    },
+  });
 
   const settings = useSettingsContext();
 
   const confirm = useBoolean();
 
-  const [tableData, setTableData] = useState(_userList);
+  const [tableData, setTableData] = useState([]);
 
   const [filters, setFilters] = useState(defaultFilters);
 
@@ -107,21 +103,25 @@ export default function UserDeleteView({ moduleName }) {
     const fetchUsers = async () => {
       if (!logSentRef.current) {
         const dynamicModuleName = moduleName || 'RECORDS MARKED FOR DELETION';
-        logActivity('User view marked for deletion', dynamicModuleName);
+        logActivity('User View Company Marked For Deletion', dynamicModuleName);
         logSentRef.current = true;
       }
       setLoading(true);
 
       try {
-        const token = sessionStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
         const config = {
           headers: {
             Authorization: `Bearer ${token}`,
+          },
+          params: {
+            flag: 'get-company',
           },
         };
         const response = await axiosInstance.get(endpoints.markdelete.marked_profiles, config);
         const markprofile = response.data.data;
         setUsers(markprofile);
+        setTableData(markprofile);
       } catch (error) {
         console.error('Error fetching users:', error);
       } finally {
@@ -131,6 +131,26 @@ export default function UserDeleteView({ moduleName }) {
 
     fetchUsers();
   }, [moduleName]);
+
+  // Sorting
+  const fetchSortedData = async (sortField, sortOrder) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axiosInstance.get(endpoints.markdelete.marked_profiles, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          sortBy: sortField,
+          sortOrder,
+          flag: 'get-company',
+        },
+      });
+      setUsers(response.data.data);
+    } catch (error) {
+      console.error('Error fetching sorted data:', error);
+    }
+  };
 
   const dataFiltered = applyFilter({
     inputData: tableData,
@@ -230,7 +250,7 @@ export default function UserDeleteView({ moduleName }) {
     <>
       <Container maxWidth="">
         <CustomBreadcrumbs
-          heading="Marked For Delete"
+          heading="Companies Marked For Deletion"
           links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'delete' }]}
           action={
             <Stack direction="row" spacing={5}>
@@ -241,11 +261,11 @@ export default function UserDeleteView({ moduleName }) {
                   color: '#fff',
                   fontSize: '12px',
                   fontWeight: '500',
-                  textTransform: 'none', // To prevent uppercase text
+                  textTransform: 'none',
                   marginRight: '10px',
                   width: '100px',
                   '&:hover': {
-                    backgroundColor: '#cc0000', // Darker shade on hover
+                    backgroundColor: '#cc0000',
                   },
                 }}
                 onClick={() => handleActionClick(false)}
@@ -287,7 +307,7 @@ export default function UserDeleteView({ moduleName }) {
                   <Button
                     onClick={handleConfirmDeletion}
                     color="primary"
-                    disabled={!email || !password} // Ensure both email and password are provided
+                    disabled={!email || !password}
                   >
                     Confirm
                   </Button>
@@ -306,13 +326,6 @@ export default function UserDeleteView({ moduleName }) {
               numSelected={numSelected}
               rowCount={rowCount}
               onSelectAllRows={handleSelectAllRows}
-              action={
-                <Tooltip title="Delete">
-                  <IconButton color="primary" onClick={confirm.onTrue}>
-                    <Iconify icon="solar:trash-bin-trash-bold" />
-                  </IconButton>
-                </Tooltip>
-              }
             />
             <Scrollbar>
               <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
@@ -349,7 +362,7 @@ export default function UserDeleteView({ moduleName }) {
           </TableContainer>
 
           <TablePaginationCustom
-            count={dataFiltered.length}
+            count={users.length}
             page={table.page}
             rowsPerPage={table.rowsPerPage}
             onPageChange={table.onChangePage}

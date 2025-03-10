@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useEffect, useReducer, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useReducer } from 'react';
 // utils
 import axios, { endpoints } from 'src/utils/axios';
 //
@@ -56,7 +56,7 @@ export function AuthProvider({ children }) {
 
   const initialize = useCallback(async () => {
     try {
-      const accessToken = sessionStorage.getItem(STORAGE_KEY);
+      const accessToken = localStorage.getItem(STORAGE_KEY);
 
       if (accessToken && isValidToken(accessToken)) {
         setSession(accessToken);
@@ -134,7 +134,7 @@ export function AuthProvider({ children }) {
 
     const { accessToken, user } = response.data;
 
-    sessionStorage.setItem(STORAGE_KEY, accessToken);
+    localStorage.setItem(STORAGE_KEY, accessToken);
 
     dispatch({
       type: 'REGISTER',

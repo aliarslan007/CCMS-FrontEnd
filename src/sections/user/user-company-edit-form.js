@@ -135,7 +135,7 @@ export default function UserCompanyEditForm({ moduleName }) {
       logSentRef.current = true;
     }
     const formData = new FormData();
-    const token = sessionStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken');
 
     // Append all fields except photoURL
     formData.append('company_name', data.company_name);

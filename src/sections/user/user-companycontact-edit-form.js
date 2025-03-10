@@ -86,7 +86,7 @@ export default function UserCompanyContactEditForm({ moduleName }) {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const token = sessionStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
 
         let companyResponse;
         if (id) {
@@ -263,11 +263,11 @@ export default function UserCompanyContactEditForm({ moduleName }) {
     formData.forEach((value, key) => {});
 
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       await axiosInstance.post(endpoints.contact.details, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       enqueueSnackbar('Contact created successfully', { variant: 'success' });
@@ -491,7 +491,7 @@ export default function UserCompanyContactEditForm({ moduleName }) {
                   MenuProps={{
                     PaperProps: {
                       style: {
-                        maxHeight: 300, 
+                        maxHeight: 300,
                         overflowY: 'auto',
                       },
                     },

@@ -1,8 +1,8 @@
 import PropTypes from 'prop-types';
 // @mui
 import Box from '@mui/material/Box';
-import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
 import TablePagination from '@mui/material/TablePagination';
 
 // ----------------------------------------------------------------------
@@ -10,7 +10,7 @@ import TablePagination from '@mui/material/TablePagination';
 export default function TablePaginationCustom({
   dense,
   onChangeDense,
-  rowsPerPageOptions = [5, 25, 50,100],
+  rowsPerPageOptions = [5, 25, 50, 100, 150, 250, 300, 350, 400, 450, 500, 1000],
   sx,
   ...other
 }) {

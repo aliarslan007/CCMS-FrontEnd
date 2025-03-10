@@ -58,14 +58,14 @@ export default function UserTargetView({ moduleName }) {
   const logSentRef = useRef(false);
 
   useEffect(() => {
-    const Role = sessionStorage.getItem('userRole');
+    const Role = localStorage.getItem('userRole');
     setRole(Role);
   }, []);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const userId = sessionStorage.getItem('userid');
+        const userId = localStorage.getItem('userid');
 
         const params = { userId };
         if (sessionrole === 'Sales Manager') {
@@ -100,22 +100,22 @@ export default function UserTargetView({ moduleName }) {
         setLoading(true);
 
         // Get user role and ID from session storage
-        const role = sessionStorage.getItem('userRole');
-        const userId = sessionStorage.getItem('userid');
+        const role = localStorage.getItem('userRole');
+        const userId = localStorage.getItem('userid');
 
         let response;
 
         if (role === 'Admin') {
           response = await axiosInstance.get(endpoints.store.target, {
             headers: {
-              Authorization: `Bearer ${sessionStorage.getItem('authToken')}`,
+              Authorization: `Bearer ${localStorage.getItem('authToken')}`,
             },
           });
         } else if (role === 'Sales Representative' || role === 'Sales Manager') {
           response = await axiosInstance.get(endpoints.store.target, {
             params: { targeted_user_id: userId },
             headers: {
-              Authorization: `Bearer ${sessionStorage.getItem('authToken')}`,
+              Authorization: `Bearer ${localStorage.getItem('authToken')}`,
             },
           });
         }
@@ -164,7 +164,7 @@ export default function UserTargetView({ moduleName }) {
   };
 
   const handleSubmit = async () => {
-    const userId = sessionStorage.getItem('userid');
+    const userId = localStorage.getItem('userid');
 
     const payload = {
       user_id: userId,
@@ -176,7 +176,7 @@ export default function UserTargetView({ moduleName }) {
       setLoading(true);
       const response = await axiosInstance.post(endpoints.store.target, payload, {
         headers: {
-          Authorization: `Bearer ${sessionStorage.getItem('authToken')}`,
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
         },
       });
 
@@ -245,7 +245,6 @@ export default function UserTargetView({ moduleName }) {
 
       {(sessionrole === 'Admin' || sessionrole === 'Sales Manager') && (
         <Grid container spacing={2}>
-          {/* Select Company Dropdown */}
           <Grid item xs={12} md={3}>
             <FormControl fullWidth>
               <InputLabel>Select Users</InputLabel>

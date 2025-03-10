@@ -5,7 +5,7 @@ import { HOST_API } from '../config-global';
 window.Pusher = Pusher;
 
 const getAuthToken = () => {
-  const token = sessionStorage.getItem('authToken');
+  const token = localStorage.getItem('authToken');
   return token;
 };
 
@@ -22,22 +22,5 @@ const echo = new Echo({
     },
   },
 });
-
-// // Detailed connection logging
-// echo.connector.pusher.connection.bind('connecting', () => {
-//   console.log('Attempting Pusher connection...');
-// });
-
-// echo.connector.pusher.connection.bind('connected', () => {
-//   console.log('Pusher connected!');
-// });
-
-// echo.connector.pusher.connection.bind('failed', (error) => {
-//   console.error('Connection failed:', error);
-// });
-
-// echo.connector.pusher.connection.bind('error', (error) => {
-//   console.error('Pusher error:', error);
-// });
 
 export default echo;

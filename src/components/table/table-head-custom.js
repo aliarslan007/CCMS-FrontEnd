@@ -1,10 +1,10 @@
 import PropTypes from 'prop-types';
 // @mui
 import Box from '@mui/material/Box';
-import TableRow from '@mui/material/TableRow';
 import Checkbox from '@mui/material/Checkbox';
-import TableHead from '@mui/material/TableHead';
 import TableCell from '@mui/material/TableCell';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
 import TableSortLabel from '@mui/material/TableSortLabel';
 
 // ----------------------------------------------------------------------
@@ -55,13 +55,14 @@ export default function TableHeadCustom({
           >
             {onSort ? (
               <TableSortLabel
-                hideSortIcon
                 active={orderBy === headCell.id}
                 direction={orderBy === headCell.id ? order : 'asc'}
-                onClick={() => onSort(headCell.id)}
+                onClick={() => {
+                  const isAsc = orderBy === headCell.id && order === 'asc';
+                  onSort(headCell.id, isAsc ? 'desc' : 'asc'); 
+                }}
               >
                 {headCell.label}
-
                 {orderBy === headCell.id ? (
                   <Box sx={{ ...visuallyHidden }}>
                     {order === 'desc' ? 'sorted descending' : 'sorted ascending'}

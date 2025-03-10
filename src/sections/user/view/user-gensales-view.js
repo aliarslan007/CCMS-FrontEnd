@@ -65,7 +65,6 @@ export default function UserGenSalesView({ moduleName }) {
   const logSentRef = useRef(false);
 
   useEffect(() => {
-    // Only run this effect if the role is "Admin"
     if (userRole !== 'Admin') return;
 
     const fetchUsers = async () => {
@@ -104,8 +103,8 @@ export default function UserGenSalesView({ moduleName }) {
       if (!userRole) return;
       setLoading(true);
       try {
-        const userId = sessionStorage.getItem('userid');
-        const token = sessionStorage.getItem('authToken');
+        const userId = localStorage.getItem('userid');
+        const token = localStorage.getItem('authToken');
 
         const params = {
           user_id: userId,
@@ -160,13 +159,13 @@ export default function UserGenSalesView({ moduleName }) {
   }, [enqueueSnackbar, userRole, filtersCleared, moduleName]);
 
   useEffect(() => {
-    const storedRole = sessionStorage.getItem('userRole');
+    const storedRole = localStorage.getItem('userRole');
     setUserRole(storedRole);
   }, []);
 
   const fetchFilteredPipelines = async (filters = {}) => {
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       const params = {
         ...(filters.profile_ids?.length > 0 && { profile_ids: filters.profile_ids.join(',') }),
         ...(filters.from_date && { from_date: filters.from_date }),
@@ -222,12 +221,7 @@ export default function UserGenSalesView({ moduleName }) {
   };
 
   const applyDateFilter = () => {
-    if (!fromDate) {
-      enqueueSnackbar('Please select both From and To dates.', { variant: 'warning' });
-      return;
-    }
-
-    const userId = sessionStorage.getItem('userid');
+    const userId = localStorage.getItem('userid');
 
     let params = {
       from_date: fromDate,
@@ -251,7 +245,7 @@ export default function UserGenSalesView({ moduleName }) {
 
   const handleExport = async () => {
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
 
       const profileIds = pipelines.map((pipeline) => pipeline.profile_id);
 
@@ -333,12 +327,11 @@ export default function UserGenSalesView({ moduleName }) {
 
   const monthlyData = Array(12)
     .fill(0)
-    .map(() => ({ approved: 0 })); // Only one field for 'approved' data
+    .map(() => ({ approved: 0 }));
 
   pipelines.forEach((pipeline) => {
     const createdYear = new Date(pipeline.created_at).getFullYear();
     if (createdYear === selectedYear && pipeline.status === 'approved') {
-      // Filter only approved status
       const monthIndex = new Date(pipeline.created_at).getMonth();
       monthlyData[monthIndex].approved += parseFloat(pipeline.worth);
     }
@@ -485,14 +478,14 @@ export default function UserGenSalesView({ moduleName }) {
                 onClick={handleExport}
                 sx={{
                   position: 'absolute',
-                  right: { xs: 0, sm: -420 }, // Stick to right edge
-                  top: 0, // Stick to top edge
+                  right: { xs: 0, sm: -420 },
+                  top: 0,
                   minWidth: 100,
                   px: 3,
                   py: 1,
                   fontSize: { xs: '0.8rem', sm: '1rem' },
-                  margin: '8px', // Add small consistent margin
-                  transform: 'none', // Disable any default transforms
+                  margin: '8px',
+                  transform: 'none',
                 }}
               >
                 Export

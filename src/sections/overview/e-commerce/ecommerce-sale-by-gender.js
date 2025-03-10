@@ -10,9 +10,9 @@ import Chart, { useChart } from 'src/components/chart';
 
 // ----------------------------------------------------------------------
 
-const CHART_HEIGHT = 240;
+const CHART_HEIGHT = 260;
 
-const LEGEND_HEIGHT = 50;
+const LEGEND_HEIGHT = 90;
 
 const StyledChart = styled(Chart)(({ theme }) => ({
   height: CHART_HEIGHT,
@@ -28,74 +28,61 @@ const StyledChart = styled(Chart)(({ theme }) => ({
 
 // ----------------------------------------------------------------------
 
-export default function EcommerceSaleByGender({ title, subheader, total, chart, ...other }) {
+export default function EcommerceTargetDonut({ title, targetWorth, remainingWorth, ...other }) {
   const theme = useTheme();
+  const numericTarget = Number(targetWorth) || 0;
+  const numericPending = Number(remainingWorth) || 0;
 
-  const {
-    colors = [
-      [theme.palette.primary.light, theme.palette.primary.main],
-      [theme.palette.warning.light, theme.palette.warning.main],
-    ],
-    series,
-    options,
-  } = chart;
-
-  const chartSeries = series.map((i) => i.value);
+  const chartSeries = [numericTarget, numericPending];
 
   const chartOptions = useChart({
-    colors: colors.map((colr) => colr[1]),
     chart: {
-      sparkline: {
-        enabled: true,
+      type: 'donut',
+      sparkline: { enabled: true },
+    },
+    labels: ['Total Target', 'Remaining'],
+    colors: [theme.palette.success.main, theme.palette.warning.main],
+    plotOptions: {
+      pie: {
+        donut: {
+          size: '70%',
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: 'Total Target',
+              formatter: (w) => {
+                const total = w.config.series[0]; 
+                return fNumber(total);
+              },
+            },
+          },
+        },
       },
     },
-    labels: series.map((i) => i.label),
     legend: {
       floating: true,
       position: 'bottom',
       horizontalAlign: 'center',
     },
-    fill: {
-      type: 'gradient',
-      gradient: {
-        colorStops: colors.map((colr) => [
-          { offset: 0, color: colr[0] },
-          { offset: 100, color: colr[1] },
-        ]),
-      },
-    },
-    plotOptions: {
-      radialBar: {
-        hollow: { size: '68%' },
-        dataLabels: {
-          value: { offsetY: 16 },
-          total: {
-            formatter: () => fNumber(total),
-          },
-        },
-      },
-    },
-    ...options,
   });
 
   return (
     <Card {...other}>
-      <CardHeader title={title} subheader={subheader} sx={{ mb: 2, pt: 1 }} />
-
+      <CardHeader title={title} sx={{ pt: 1 }} />
       <StyledChart
         dir="ltr"
-        type="radialBar"
+        type="donut"
         series={chartSeries}
         options={chartOptions}
-        height={320}
+        height={345}
       />
     </Card>
   );
 }
 
-EcommerceSaleByGender.propTypes = {
-  chart: PropTypes.object,
-  subheader: PropTypes.string,
+EcommerceTargetDonut.propTypes = {
   title: PropTypes.string,
-  total: PropTypes.number,
+  targetWorth: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  remainingWorth: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 };

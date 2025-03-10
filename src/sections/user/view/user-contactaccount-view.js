@@ -5,11 +5,9 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
-import IconButton from '@mui/material/IconButton';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableContainer from '@mui/material/TableContainer';
-import Tooltip from '@mui/material/Tooltip';
 // routes
 import { RouterLink } from 'src/routes/components';
 import { useRouter } from 'src/routes/hooks';
@@ -44,13 +42,13 @@ import DuplicateRecordsModal from './duplicate-view';
 // ----------------------------------------------------------------------
 
 const TABLE_HEAD = [
-  { id: 'company', label: 'Company Name', width: '15%' },
-  { id: 'phoneNumber', label: 'Title', width: '15%' },
-  { id: 'company', label: 'First Name', width: '15%' },
-  { id: 'company', label: 'Last Name', width: '15%' },
-  { id: '', label: 'Email Address', width: '15%' },
-  { id: '', label: 'Cell Phone 1', width: '15%' },
-  { id: '', label: 'Office Phone 1', width: '5%' },
+  { id: 'company_account_id', label: 'Company Name', width: '15%' },
+  { id: 'title', label: 'Title', width: '15%' },
+  { id: 'client_first_name', label: 'First Name', width: '15%' },
+  { id: 'client_last_name', label: 'Last Name', width: '15%' },
+  { id: 'personal_email', label: 'Email Address', width: '15%' },
+  { id: 'cell_phone1', label: 'Cell Phone 1', width: '15%' },
+  { id: 'office_phone1', label: 'Office Phone 1', width: '5%' },
   { id: '', width: '5%' },
 ];
 
@@ -62,7 +60,11 @@ const defaultFilters = {
 // ----------------------------------------------------------------------
 
 export default function OverviewContactAccountView({ moduleName }) {
-  const table = useTable();
+  const table = useTable({
+    onSortChange: (newOrder, newOrderBy) => {
+      fetchSortedData(newOrderBy, newOrder);
+    },
+  });
 
   const settings = useSettingsContext();
 
@@ -71,6 +73,10 @@ export default function OverviewContactAccountView({ moduleName }) {
   const confirm = useBoolean();
 
   const [tableData, setTableData] = useState([]);
+
+  const [page, setPage] = useState(0);
+
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const [filters, setFilters] = useState(defaultFilters);
 
@@ -103,7 +109,7 @@ export default function OverviewContactAccountView({ moduleName }) {
       }
       setLoading(true);
       try {
-        const token = sessionStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
         const response = await axiosInstance.get(endpoints.contact.details, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -121,6 +127,25 @@ export default function OverviewContactAccountView({ moduleName }) {
     fetchUsers();
   }, [moduleName]);
 
+  // Sorting
+  const fetchSortedData = async (sortField, sortOrder) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axiosInstance.get(endpoints.contact.details, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          sortBy: sortField,
+          sortOrder,
+        },
+      });
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching sorted data:', error);
+    }
+  };
+
   // Handle inactive contacts
   const handleMarkInactive = async () => {
     if (selectedIds.length === 0) {
@@ -130,7 +155,7 @@ export default function OverviewContactAccountView({ moduleName }) {
     try {
       const idsString = selectedIds.map((user) => user.id).join(',');
       const url = endpoints.inactive.contact(idsString);
-      const loginuser = JSON.parse(sessionStorage.getItem('user'));
+      const loginuser = JSON.parse(localStorage.getItem('user'));
       const representativeName = loginuser ? loginuser.display_name : '';
       const data = {
         representative_name: representativeName,
@@ -161,7 +186,7 @@ export default function OverviewContactAccountView({ moduleName }) {
 
     if (updatedTypes.length === 0) {
       try {
-        const token = sessionStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
         const response = await axiosInstance.get(endpoints.contact.details, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -169,6 +194,7 @@ export default function OverviewContactAccountView({ moduleName }) {
         });
         const activeUsers = response.data.filter((user) => user.is_active === 1);
         setUsers(activeUsers);
+        setTableData(activeUsers);
       } catch (error) {
         console.error('Error fetching all companies:', error);
         enqueueSnackbar('Failed to fetch all companies. Please try again.', {
@@ -178,7 +204,7 @@ export default function OverviewContactAccountView({ moduleName }) {
       return;
     }
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       const response = await axiosInstance.get(endpoints.filter.company, {
         params: {
           model: 'company_contact',
@@ -189,6 +215,7 @@ export default function OverviewContactAccountView({ moduleName }) {
         },
       });
       setUsers(response.data.data);
+      setTableData(response.data.data);
     } catch (error) {
       console.error('Error fetching filtered companies:', error);
       enqueueSnackbar('Failed to fetch filtered companies. Please try again.', {
@@ -200,7 +227,7 @@ export default function OverviewContactAccountView({ moduleName }) {
   // Handle search functionality
   const fetchFilteredData = async (nameFilter) => {
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       const response = await axiosInstance.get(endpoints.search.contact, {
         params: { name: nameFilter },
         headers: {
@@ -208,6 +235,8 @@ export default function OverviewContactAccountView({ moduleName }) {
         },
       });
       setUsers(response.data.data);
+      setTableData(response.data.data);
+      setPage(0);
     } catch (error) {
       console.error('Error fetching filtered data:', error);
     }
@@ -244,7 +273,7 @@ export default function OverviewContactAccountView({ moduleName }) {
     }
   };
 
-  // Function to handle export
+  // Function to handle import
   const handleImport = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -453,16 +482,9 @@ export default function OverviewContactAccountView({ moduleName }) {
               numSelected={numSelected}
               rowCount={rowCount}
               onSelectAllRows={handleSelectAllRows}
-              action={
-                <Tooltip title="Delete">
-                  <IconButton color="primary" onClick={confirm.onTrue}>
-                    <Iconify icon="solar:trash-bin-trash-bold" />
-                  </IconButton>
-                </Tooltip>
-              }
             />
 
-            <Scrollbar sx={{ maxHeight: 400 }}>
+            <Scrollbar sx={{ maxHeight: 700000 }}>
               <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
                 <TableHeadCustom
                   order={table.order}
@@ -514,7 +536,7 @@ export default function OverviewContactAccountView({ moduleName }) {
           </TableContainer>
 
           <TablePaginationCustom
-            count={dataFiltered.length}
+            count={users.length}
             page={table.page}
             rowsPerPage={table.rowsPerPage}
             onPageChange={table.onChangePage}

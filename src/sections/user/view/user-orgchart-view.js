@@ -52,7 +52,7 @@ const NodeComponent = ({ node, onAvatarClick }) => (
           sx={{
             width: 28,
             height: 28,
-            cursor: 'pointer', 
+            cursor: 'pointer',
             '&:hover': {
               transform: 'scale(1.1)',
               boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
@@ -143,13 +143,13 @@ const OrgChartComponent = () => {
   };
 
   useEffect(() => {
-    const storedRole = sessionStorage.getItem('userRole');
+    const storedRole = localStorage.getItem('userRole');
     setUserRole(storedRole);
   }, []);
 
   const fetchCompanies = async () => {
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       const response = await axiosInstance.get(endpoints.all.company, {
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -1,6 +1,8 @@
 import PropTypes from 'prop-types';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 // @mui
+import { Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import MenuItem from '@mui/material/MenuItem';
@@ -12,7 +14,6 @@ import { useBoolean } from 'src/hooks/use-boolean';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 import CustomPopover, { usePopover } from 'src/components/custom-popover';
 import Iconify from 'src/components/iconify';
-import { paths } from '../../routes/paths';
 
 // ----------------------------------------------------------------------
 
@@ -22,21 +23,38 @@ export default function CompanyTableRow({
   onEditRow,
   onSelectRow,
   onDeleteRow,
-  type,
-  profile_id
+  profile_id,
 }) {
-  const { profile_type, id, created_at, name, last_name, title, company_name, sale_rep_name } = row;
+  const {
+    profile_uuid,
+    profile_type,
+    created_at,
+    name,
+    last_name,
+    title,
+    company_name,
+    marked_by_user_id,
+    marked_by_uuid,
+    reason,
+  } = row;
 
   const navigate = useNavigate();
   const confirm = useBoolean();
-  const quickEdit = useBoolean();
   const popover = usePopover();
 
-  const handleCompanyClick = () => {
-    const path =
-      profile_type === 'App\\Models\\CompanyAccount'
-        ? `/dashboard/user/companydetailsinfo/${profile_id}`
-        : `/dashboard/user/companycontactdetails/${profile_id}`;
+  // State for "See More" Modal
+  const [openModal, setOpenModal] = useState(false);
+
+  const handleCompanyClick = (id, type) => {
+    let path = '';
+
+    if (type === 'App\\Models\\CompanyAccount') {
+      path = `/dashboard/user/companydetailsinfo/${id}`;
+    } else if (type === 'App\\Models\\CompanyContact') {
+      path = `/dashboard/user/companycontactdetails/${id}`;
+    } else {
+      path = `/dashboard/user/accountuser/${id}`;
+    }
 
     navigate(path);
   };
@@ -47,44 +65,64 @@ export default function CompanyTableRow({
         <TableCell padding="checkbox">
           <Checkbox checked={selected} onClick={onSelectRow} />
         </TableCell>
-
-        {/* <TableCell sx={{ whiteSpace: 'nowrap' }}>{id}</TableCell>
-        <TableCell sx={{ whiteSpace: 'nowrap' }}>{processedProfileType}</TableCell> */}
-        <TableCell sx={{ whiteSpace: 'nowrap' }}>{sale_rep_name}</TableCell>
         <TableCell
           sx={{
             whiteSpace: 'nowrap',
             cursor: 'pointer',
-            color: 'primary.main', 
+            color: 'primary.main',
           }}
-          onClick={() => handleCompanyClick(profile_id)}
+          onClick={() => handleCompanyClick(marked_by_uuid, 'App\\Models\\Profile')}
+        >
+          {marked_by_user_id}
+        </TableCell>
+        <TableCell
+          sx={{
+            whiteSpace: 'nowrap',
+            cursor: 'pointer',
+            color: 'primary.main',
+          }}
+          onClick={() => handleCompanyClick(profile_uuid, profile_type)}
         >
           {company_name}
         </TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>{`${name} ${last_name}`}</TableCell>
-        <TableCell sx={{ whiteSpace: 'nowrap' }}>{title}</TableCell>
-        {/* <TableCell>{new Date(created_at).toLocaleString()}</TableCell> */}
+
         <TableCell
-          align="right"
           sx={{
-            px: 1,
             whiteSpace: 'nowrap',
-            position: 'relative',
-            left: '-50px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
           }}
+          onClick={() => setOpenModal(true)}
         >
-          {/* <Tooltip title="Quick Edit" placement="top" arrow>
-            <IconButton color={quickEdit.value ? 'inherit' : 'default'} onClick={quickEdit.onTrue}>
-              <Iconify icon="solar:pen-bold" />
-            </IconButton>
-          </Tooltip> */}
+          {reason ? (
+            <>
+              <Iconify icon="eva:eye-fill" sx={{ color: 'primary.main', width: 20, height: 20 }} />
+            </>
+          ) : (
+            'N/A'
+          )}
         </TableCell>
+
+        <TableCell>{new Date(created_at).toLocaleString()}</TableCell>
       </TableRow>
 
-      {/* Quick Edit Form for the company */}
-      {/* <UserQuickEditForm currentUser={row} open={quickEdit.value} onClose={quickEdit.onFalse} /> */}
+      {/* SEE MORE MODAL */}
+      <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Reason Details</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">{reason}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenModal(false)} color="primary" variant="contained">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-      {/* Custom Popover for actions */}
+      {/* Custom Popover Actions */}
       <CustomPopover
         open={popover.open}
         onClose={popover.onClose}
@@ -134,7 +172,6 @@ CompanyTableRow.propTypes = {
   onEditRow: PropTypes.func,
   onSelectRow: PropTypes.func,
   row: PropTypes.object,
-  type: PropTypes.object,
   profile_id: PropTypes.object,
   selected: PropTypes.bool,
 };

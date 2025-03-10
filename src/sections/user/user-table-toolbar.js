@@ -70,7 +70,7 @@ export default function UserTableToolbar({
 
           <Select
             multiple
-            value={localSelectedTypes} // Ensure it's always an array
+            value={localSelectedTypes}
             onChange={handleChange}
             input={<OutlinedInput label="Company Types" />}
             renderValue={(selected) => selected.join(', ')}

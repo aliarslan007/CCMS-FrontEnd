@@ -1,19 +1,30 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 // @mui
-import { Card, Grid } from '@mui/material';
+import {
+  Button,
+  Card,
+  Checkbox,
+  FormControl,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+} from '@mui/material';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import PropTypes from 'prop-types';
 // hooks
-import { useMockedUser } from 'src/hooks/use-mocked-user';
 // _mock
-import { _ecommerceSalesOverview } from 'src/_mock';
 // components
 import { useSettingsContext } from 'src/components/settings';
 // assets
 //
+import { DatePicker } from '@mui/x-date-pickers';
+import dayjs from 'dayjs';
 import { useSnackbar } from 'src/components/snackbar';
 import axiosInstance, { endpoints } from 'src/utils/axios';
 import { logActivity } from 'src/utils/log-activity';
@@ -25,28 +36,30 @@ import EcommerceYearlySales from '../ecommerce-yearly-sales';
 // ----------------------------------------------------------------------
 
 export default function OverviewEcommerceView({ moduleName }) {
-  const { user } = useMockedUser();
-
   const theme = useTheme();
-
   const settings = useSettingsContext();
-
-  const [companyTypes, setCompanyTypes] = useState([]);
-
   const logSentRef = useRef(false);
-
   const [loading, setLoading] = useState(true);
-
   const { enqueueSnackbar } = useSnackbar();
-
   const [role, setRole] = useState('');
-
   const [pipelines, setPipelines] = useState([]);
-
   const [selectedUserComparison, setSelectedUserComparison] = useState([]);
+  const [pendingWorth, setPendingWorth] = useState(0);
+  const [approvedWorth, setapproved_total_worth] = useState(0);
+  const [submittedWorth, setsubmitted_total_count] = useState(0);
+  const [targetWorth, settarget_total_count] = useState(0);
+  const [remainingWorth, setRemainingWorth] = useState(0);
+  const [percentageWorth, setPercentage] = useState('');
+  const [approvedPercentageWorth, setApprovedPercentage] = useState('');
+  const [pendingApprovals, setPendingApprovals] = useState('');
+  const [ecommerceSalesOverview, setEcommerceSalesOverview] = useState([]);
+  const [selectedUser, setSelectedUser] = useState([]);
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
 
   useEffect(() => {
-    const storedRole = sessionStorage.getItem('userRole');
+    const storedRole = localStorage.getItem('userRole');
     if (storedRole) {
       setRole(storedRole);
     }
@@ -63,8 +76,8 @@ export default function OverviewEcommerceView({ moduleName }) {
       if (!role) return;
       setLoading(true);
       try {
-        const userId = sessionStorage.getItem('userid');
-        const token = sessionStorage.getItem('authToken');
+        const userId = localStorage.getItem('userid');
+        const token = localStorage.getItem('authToken');
         const roleParam = role?.toLowerCase().replace(/\s+/g, '_') || 'unknown_role';
         const params = {
           user_id: userId,
@@ -115,6 +128,130 @@ export default function OverviewEcommerceView({ moduleName }) {
     fetchPipelines();
   }, [enqueueSnackbar, role, moduleName]);
 
+  const fetchPendingWorth = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const userRole = localStorage.getItem('userRole');
+      const userId = localStorage.getItem('userid');
+
+      if ((userRole === 'Sales Representative' || userRole === 'Sales Manager') && !userId) {
+        console.error('User ID is missing for role:', userRole);
+        return;
+      }
+
+      const params = {};
+      if (userRole === 'Sales Representative') {
+        params.userId = userId;
+      } else if (userRole === 'Sales Manager') {
+        const allUserIds = allUsers.map((user) => user.id);
+        params.userId = [userId, ...allUserIds].join(',');
+        params['get-corresponding'] = true;
+      }
+      const response = await axiosInstance.get(endpoints.get.pending, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params,
+      });
+
+      const data = response.data;
+      setPendingWorth(parseFloat(data.total_worth));
+      setapproved_total_worth(data.approved_total_worth);
+      setsubmitted_total_count(data.submitted_count);
+      settarget_total_count(parseFloat(data.total_targeted_value));
+      setRemainingWorth(parseFloat(data.remaining_target_value));
+      setPercentage(parseFloat(data.percentage_change));
+      setApprovedPercentage(parseFloat(data.approved_percentage_change));
+      setPendingApprovals(parseFloat(data.submitted_count_last_week));
+      const overviewData = [
+        { label: 'Weekly Pending Pipelines Worth ', value: Number(data.pending_today_total) },
+        { label: 'Weekly Approved Pipelines Worth ', value: Number(data.approved_today_total) },
+        { label: 'Weekly Submitted Pipelines Worth ', value: Number(data.submitted_today_total) },
+      ];
+      setEcommerceSalesOverview(overviewData);
+    } catch (error) {
+      console.error('Error fetching pending worth:', error);
+    }
+  }, [allUsers]);
+
+  const Role = localStorage.getItem('userRole');
+
+  useEffect(() => {
+    if (Role === 'Sales Manager' && allUsers.length === 0) {
+      return;
+    }
+    fetchPendingWorth();
+  }, [fetchPendingWorth, allUsers, Role]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const userId = localStorage.getItem('userid');
+        const logedrole = localStorage.getItem('userRole');
+        const params = { userId };
+        if (logedrole === 'Sales Manager') {
+          params.isManager = true;
+        }
+
+        const response = await axiosInstance.get(endpoints.admin.details, { params });
+
+        const activeUsers = response.data.map((user) => ({
+          id: user.id,
+          profile_id: user.profile_id,
+          name: user.full_name,
+        }));
+
+        setAllUsers(activeUsers);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  const token = localStorage.getItem('authToken');
+  const logedRole = localStorage.getItem('userRole');
+  const isFirstRender = useRef(true);
+  const fetchData = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get(endpoints.get.pending, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          profile_id: selectedUser.length > 0 ? selectedUser.join(',') : null,
+          from_date: fromDate ? dayjs(fromDate).format('YYYY-MM-DD') : null,
+          to_date: toDate ? dayjs(toDate).format('YYYY-MM-DD') : null,
+        },
+      });
+
+      const data = response.data;
+
+      setPendingWorth(data.total_worth || 0);
+      setapproved_total_worth(data.approved_total_worth || 0);
+      setsubmitted_total_count(data.submitted_count || 0);
+      settarget_total_count(data.total_targeted_value || 0);
+      setRemainingWorth(parseFloat(data.remaining_target_value || 0));
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  }, [selectedUser, fromDate, toDate, token]);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    if (
+      (logedRole === 'Sales Manager' || logedRole === 'Admin') &&
+      (selectedUser || fromDate || toDate)
+    ) {
+      fetchData();
+    }
+  }, [fetchData, selectedUser, fromDate, toDate, logedRole]);
+
   const availableUsers = pipelines.reduce((acc, pipeline) => {
     if (pipeline.profile_name) {
       if (!acc.find((u) => u.name === pipeline.profile_name)) {
@@ -163,71 +300,126 @@ export default function OverviewEcommerceView({ moduleName }) {
     ],
     series: filteredSeries,
   };
-
-  const computePipelineStatusSeries = (data) => {
-    const totalCount = data.length;
-    const statusCount = data.reduce((acc, pipeline) => {
-      const status = pipeline.status;
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {});
-
-    const statusSeries = Object.keys(statusCount).map((status) => ({
-      label: status.charAt(0).toUpperCase() + status.slice(1),
-      value: totalCount > 0 ? Math.round((statusCount[status] / totalCount) * 100) : 0,
-    }));
-
-    return { series: statusSeries, total: totalCount };
-  };
-
-  const pipelineStatusData = computePipelineStatusSeries(pipelines);
-
+  const userRole = localStorage.getItem('userRole');
   return (
     <Container maxWidth="" sx={{ paddingBottom: '60px' }}>
+      {(userRole === 'Sales Manager' || userRole === 'Admin') && (
+        <Grid container spacing={2} sx={{ mb: 5 }}>
+          <Grid item xs={12} md={6} lg={2}>
+            <FormControl fullWidth>
+              <InputLabel>Select Users</InputLabel>
+              <Select
+                multiple
+                value={selectedUser}
+                onChange={(e) => setSelectedUser(e.target.value)}
+                label="Select Users"
+                renderValue={(selected) => {
+                  if (!selected.length) return 'All Users';
+                  return selected.map((id) => allUsers.find((u) => u.id === id)?.name).join(', ');
+                }}
+              >
+                <MenuItem value="">
+                  <Checkbox checked={selectedUser.length === 0} />
+                  All Users
+                </MenuItem>
+                {allUsers.map((user) => (
+                  <MenuItem key={user.id} value={user.id}>
+                    <Checkbox checked={selectedUser.includes(user.id)} />
+                    {user.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={6} lg={6}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <DatePicker
+                label="From Date"
+                value={fromDate}
+                onChange={(newValue) => setFromDate(newValue)}
+                renderInput={(params) => <TextField {...params} fullWidth />}
+              />
+              <DatePicker
+                label="To Date"
+                value={toDate}
+                onChange={(newValue) => setToDate(newValue)}
+                renderInput={(params) => <TextField {...params} fullWidth />}
+              />
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={fetchData}
+                sx={{
+                  width: '120px',
+                  height: '35px',
+                  marginTop: '10px',
+                }}
+              >
+                Apply
+              </Button>
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={() => {
+                  setFromDate(null);
+                  setSelectedUser([]);
+                  setToDate(null);
+                  fetchPendingWorth();
+                }}
+                sx={{
+                  width: '120px',
+                  height: '35px',
+                  marginTop: '10px',
+                }}
+              >
+                Clear
+              </Button>
+            </Stack>
+          </Grid>
+        </Grid>
+      )}
       <Grid container spacing={3}>
         <Grid xs={12} md={4} sx={{ height: '200px', display: 'flex', alignItems: 'center' }}>
           <EcommerceWidgetSummary
-            title="Product Sold"
-            percent={2.6}
-            total={765}
-            chart={{
-              series: [22, 8, 35, 50, 82, 84, 77, 12, 87, 43],
-            }}
-          />
-        </Grid>
-
-        <Grid xs={12} md={4} sx={{ height: '200px', display: 'flex', alignItems: 'center' }}>
-          <EcommerceWidgetSummary
-            title="Sales Target Progress"
-            percent={-0.1}
-            total={18765}
+            title="Generated Sales - Yearly Report"
+            percent={approvedPercentageWorth}
+            total={approvedWorth}
             chart={{
               colors: [theme.palette.info.light, theme.palette.info.main],
-              series: [56, 47, 40, 62, 73, 30, 23, 54, 67, 68],
+              series: [],
             }}
           />
         </Grid>
-
         <Grid xs={12} md={4} sx={{ height: '200px', display: 'flex', alignItems: 'center' }}>
           <EcommerceWidgetSummary
-            title="Sales Profit"
-            percent={0.6}
-            total={4876}
+            title="Current Year Pending Pipelines"
+            percent={percentageWorth}
+            total={pendingWorth}
+            chart={{
+              series: [],
+            }}
+          />
+        </Grid>
+        <Grid xs={12} md={4} sx={{ height: '180px', display: 'flex', alignItems: 'center' }}>
+          <EcommerceWidgetSummary
+            title="Submitted Pipelines - Awaiting Approval"
+            percent={pendingApprovals}
+            total={submittedWorth}
             chart={{
               colors: [theme.palette.warning.light, theme.palette.warning.main],
-              series: [40, 70, 75, 70, 50, 28, 7, 64, 38, 27],
+              series: [],
             }}
           />
         </Grid>
 
-        <Grid xs={12} md={6} lg={4} mt={3}>
-          <EcommerceSaleByGender
-            title="Sale By Users"
-            total={pipelineStatusData.total}
-            chart={{
-              series: pipelineStatusData.series,
-            }}
-          />
+        <Grid xs={12} md={6} lg={4} mt={3} sx={{ height: '300px' }}>
+          {targetWorth > 0 ? (
+            <EcommerceSaleByGender
+              title="Total Targets"
+              targetWorth={targetWorth}
+              remainingWorth={remainingWorth}
+            />
+          ) : null}
         </Grid>
 
         <Grid item xs={12} md={3} lg={8} mb={3}>
@@ -241,9 +433,8 @@ export default function OverviewEcommerceView({ moduleName }) {
             />
           </Card>
         </Grid>
-
         <Grid xs={12} md={12} lg={12} sx={{ mt: 0 }}>
-          <EcommerceSalesOverview title="Sales Overview" data={_ecommerceSalesOverview} />
+          <EcommerceSalesOverview title="Weekly Pipeline Summary" data={ecommerceSalesOverview} />
         </Grid>
       </Grid>
       <Box>

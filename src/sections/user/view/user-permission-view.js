@@ -42,6 +42,7 @@ import {
   TableSelectedAction,
   useTable,
 } from 'src/components/table';
+import TableHeadSimple from 'src/components/table/table-head-permission-contact';
 import { useRouter } from 'src/routes/hooks';
 //
 
@@ -58,24 +59,24 @@ import UserTableRows from '../user-table-row-contact';
 // ----------------------------------------------------------------------
 
 const TABLE_HEAD = [
-  { id: 'name', label: 'Full Name' },
-  { id: 'name', label: 'Company Name' },
-  { id: 'phoneNumber', label: 'Mobile Phone No', width: '15%' },
-  { id: 'company', label: 'Title', width: '15%' },
-  { id: 'email', label: 'Email', width: '15%' },
+  { id: 'full_name', label: 'Full Name' },
+  { id: 'full_name', label: 'Company Name' },
+  { id: 'main_phone_number', label: 'Mobile Phone No', width: '15%' },
+  { id: 'title', label: 'Title', width: '15%' },
+  { id: 'personal_email', label: 'Email', width: '15%' },
   { id: 'role', label: 'Role', width: '15%' },
-  { id: 'role', label: 'Permission Access', width: '15%' },
+  { id: 'access', label: 'Permission Access', width: '15%' },
   { id: '', width: 88 },
 ];
 
 const USER_TABLE_HEAD = [
-  { id: 'name', label: 'Full Name' },
-  { id: 'phoneNumber', label: 'Title', width: '15%' },
-  { id: 'company', label: 'Client First Name', width: '15%' },
-  { id: 'email', label: 'Client Last Name', width: '15%' },
-  { id: 'role', label: 'Personal Email', width: '15%' },
-  { id: 'role', label: 'Cell Phone 1', width: '15%' },
-  { id: 'role', label: 'Office Phone', width: '15%' },
+  { id: '', label: 'Avatar' },
+  { id: 'title', label: 'Title', width: '15%' },
+  { id: 'client_first_name', label: 'Client First Name', width: '15%' },
+  { id: 'client_last_name', label: 'Client Last Name', width: '15%' },
+  { id: 'email', label: 'Personal Email', width: '15%' },
+  { id: 'cell_phone1', label: 'Cell Phone 1', width: '15%' },
+  { id: 'office_phone1', label: 'Office Phone', width: '15%' },
   { id: '', width: '15%' },
 ];
 
@@ -92,12 +93,7 @@ const defaultFilters = {
 export default function UserPermissionView({ moduleName }) {
   const navigate = useNavigate();
 
-  const handleAvatarClick = () => {
-    navigate(paths.dashboard.user.companydetailsinfo); // Access the path directly
-  };
   const quickEdit = useBoolean();
-
-  const [customerCompany, setCustomerCompany] = useState('');
 
   const [permission, setpermissions] = useState('');
 
@@ -115,13 +111,20 @@ export default function UserPermissionView({ moduleName }) {
 
   const [selectedCompanyTypes, setSelectedCompanyTypes] = useState(filters?.companyType || []);
 
-  const table = useTable();
+  const table = useTable({
+    onSortChange: (newOrder, newOrderBy) => {
+      fetchSortedData(newOrderBy, newOrder);
+    },
+  });
 
   const settings = useSettingsContext();
 
   const confirm = useBoolean();
 
   const [tableData, setTableData] = useState([]);
+
+  const [page, setPage] = useState(0);
+
   const [tableDataContact, setTableDataContact] = useState([]);
 
   const [selectedCompanyId, setSelectedCompanyId] = useState(null);
@@ -140,15 +143,9 @@ export default function UserPermissionView({ moduleName }) {
 
   const [selectedCompany, setSelectedCompany] = useState([]);
 
-  const [contacts, setContacts] = useState([]);
-
-  const [selectedContact, setSelectedContact] = useState('');
-
   const [stateProvince, setStateProvince] = useState([]);
 
   const [statesList, setStatesList] = useState([]);
-
-  const [selectAll, setSelectAll] = useState(false);
 
   const [userRole, setUserRole] = useState(null);
 
@@ -183,9 +180,9 @@ export default function UserPermissionView({ moduleName }) {
       }
 
       setLoading(true);
-      const userId = sessionStorage.getItem('userid');
-      const role = sessionStorage.getItem('userRole');
-      const token = sessionStorage.getItem('authToken');
+      const userId = localStorage.getItem('userid');
+      const role = localStorage.getItem('userRole');
+      const token = localStorage.getItem('authToken');
       try {
         const params = { userId };
         if (role === 'Sales Manager') {
@@ -239,14 +236,33 @@ export default function UserPermissionView({ moduleName }) {
   }, [moduleName]);
 
   useEffect(() => {
-    const storedRole = sessionStorage.getItem('userRole');
+    const storedRole = localStorage.getItem('userRole');
     setUserRole(storedRole);
   }, []);
 
+  // Sorting
+  const fetchSortedData = async (sortField, sortOrder) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axiosInstance.get(endpoints.admin.details, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          sortBy: sortField,
+          sortOrder,
+        },
+      });
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching sorted data:', error);
+    }
+  };
+
   const handleTypeChange = async (updatedTypes) => {
     setSelectedCompanyTypes(updatedTypes);
-    const userId = sessionStorage.getItem('userid');
-    const role = sessionStorage.getItem('userRole');
+    const userId = localStorage.getItem('userid');
+    const role = localStorage.getItem('userRole');
 
     if (updatedTypes.length === 0) {
       try {
@@ -279,6 +295,7 @@ export default function UserPermissionView({ moduleName }) {
 
       const response = await axiosInstance.get(endpoints.filter.company, { params });
       setUsers(response.data.data);
+      setTableData(response.data.data);
     } catch (error) {
       console.error('Error fetching filtered companies:', error);
       enqueueSnackbar('Failed to fetch filtered companies. Please try again.', {
@@ -292,9 +309,9 @@ export default function UserPermissionView({ moduleName }) {
     setSelectedCompanyId(companyId);
     setSelectedUsername(full_name);
     const flag = false;
-    const role = sessionStorage.getItem('userRole');
+    const role = localStorage.getItem('userRole');
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
 
       const response = await axiosInstance.get(endpoints.solo.details(companyId), {
         params: {
@@ -308,6 +325,7 @@ export default function UserPermissionView({ moduleName }) {
       const contact = response.data.company_contacts || [];
       setCompanyContacts(contact);
       setTableDataContact(contact);
+      setTableData(contact);
     } catch (error) {
       console.error('Error fetching company contacts:', error);
       enqueueSnackbar('Failed to fetch contact against this user', { variant: 'error' });
@@ -315,8 +333,8 @@ export default function UserPermissionView({ moduleName }) {
   };
 
   const fetchFilteredData = async (nameFilter) => {
-    const userId = sessionStorage.getItem('userid');
-    const role = sessionStorage.getItem('userRole');
+    const userId = localStorage.getItem('userid');
+    const role = localStorage.getItem('userRole');
     try {
       const params = { name: nameFilter };
       if (role === 'Sales Manager') {
@@ -325,6 +343,8 @@ export default function UserPermissionView({ moduleName }) {
       }
       const response = await axiosInstance.get(endpoints.search.profile, { params });
       setUsers(response.data.data);
+      setTableData(response.data.data);
+      setPage(0);
     } catch (error) {
       console.error('Error fetching filtered data:', error);
     }
@@ -365,20 +385,6 @@ export default function UserPermissionView({ moduleName }) {
         // enqueueSnackbar('Failed to add permissions. Please try again.', { variant: 'error' });
         console.error('Error adding record:', error);
       }
-    }
-  };
-
-  const handleNextPage = (e) => {
-    e.stopPropagation();
-    if (endIndex < statesList.length) {
-      setCurrentPage((prev) => prev + 1);
-    }
-  };
-
-  const handlePreviousPage = (e) => {
-    e.stopPropagation();
-    if (currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
     }
   };
 
@@ -476,16 +482,6 @@ export default function UserPermissionView({ moduleName }) {
       <CustomBreadcrumbs
         heading="Permissions"
         links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Sales Rep Setting' }]}
-        // action={
-        //   <Button
-        //     component={RouterLink}
-        //     href={paths.dashboard.user.new}
-        //     variant="contained"
-        //     startIcon={<Iconify icon="mingcute:add-line" />}
-        //   >
-        //     New User
-        //   </Button>
-        // }
         sx={{
           mb: { xs: 3, md: 5 },
         }}
@@ -570,7 +566,7 @@ export default function UserPermissionView({ moduleName }) {
         </TableContainer>
 
         <TablePaginationCustom
-          count={dataFiltered.length}
+          count={users.length}
           page={table.page}
           rowsPerPage={table.rowsPerPage}
           onPageChange={table.onChangePage}
@@ -599,13 +595,6 @@ export default function UserPermissionView({ moduleName }) {
           </Box>
         </Typography>
 
-        {/* <UserTableToolbars
-            filters={filters}
-            onFilters={handleFilters}
-            roleOptions={[]}
-            selectedTypes={selectedCompanyTypes}
-            onTypeChange={handleTypeChange}
-          /> */}
         {canReset && (
           <UserTableFiltersResult
             filters={filters}
@@ -633,7 +622,7 @@ export default function UserPermissionView({ moduleName }) {
           />
           <Scrollbar>
             <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
-              <TableHeadCustom
+              <TableHeadSimple
                 order={table.order}
                 orderBy={table.orderBy}
                 headLabel={USER_TABLE_HEAD}
@@ -648,19 +637,16 @@ export default function UserPermissionView({ moduleName }) {
                     contactsTablePage * contactsTableRowsPerPage,
                     contactsTablePage * contactsTableRowsPerPage + contactsTableRowsPerPage
                   )
-                  .map((row) => {
-                    console.log();
-                    return (
-                      <UserTableRows
-                        key={row.id}
-                        row={row}
-                        selected={selectedIds.includes(row.id)}
-                        onSelectRow={() => handleSelectRow(row.id)}
-                        onDeleteRow={() => handleDeleteRow(row.id)}
-                        onEditRow={() => handleEditRow(row.id)}
-                      />
-                    );
-                  })}
+                  .map((row) => (
+                    <UserTableRows
+                      key={row.id}
+                      row={row}
+                      selected={selectedIds.includes(row.id)}
+                      onSelectRow={() => handleSelectRow(row.id)}
+                      onDeleteRow={() => handleDeleteRow(row.id)}
+                      onEditRow={() => handleEditRow(row.id)}
+                    />
+                  ))}
               </TableBody>
             </Table>
           </Scrollbar>
@@ -727,8 +713,8 @@ export default function UserPermissionView({ moduleName }) {
                           response.data;
                         if (role === 'Sales Manager') {
                           setIsSalesRepSalesManager(true);
-                          setSalesManager(selectedId); // Automatically set the selected Sales Rep as the manager
-                          setIsSalesManagerSelected(true); // Mark that Sales Manager is selected
+                          setSalesManager(selectedId);
+                          setIsSalesManagerSelected(true);
                         } else {
                           setIsSalesRepSalesManager(false);
                         }

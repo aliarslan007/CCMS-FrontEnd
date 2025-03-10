@@ -68,7 +68,7 @@ export default function CompanyDetailsInfoEdit({ moduleName }) {
   useEffect(() => {
     const fetchCompanyDetails = async () => {
       try {
-        const token = sessionStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
         const response = await axiosInstance.get(endpoints.details.accounts(id), {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -151,7 +151,7 @@ export default function CompanyDetailsInfoEdit({ moduleName }) {
     }
   }, [companyDetails, setValue]);
 
-  const token = sessionStorage.getItem('authToken');
+  const token = localStorage.getItem('authToken');
   const handleSaveChanges = async (data) => {
     logActivity('User edit company details', moduleName || 'COMPANY EDIT DETAILS', {
       identification: companyDetails.company_name,

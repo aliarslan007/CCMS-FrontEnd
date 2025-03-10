@@ -62,8 +62,8 @@ export default function OverviewAppView({ moduleName }) {
       if (!role) return;
       setLoading(true);
       try {
-        const userId = sessionStorage.getItem('userid');
-        const token = sessionStorage.getItem('authToken');
+        const userId = localStorage.getItem('userid');
+        const token = localStorage.getItem('authToken');
         const roleParam = role?.toLowerCase().replace(/\s+/g, '_') || 'unknown_role';
         const params = {
           user_id: userId,
@@ -115,7 +115,7 @@ export default function OverviewAppView({ moduleName }) {
   }, [enqueueSnackbar, role, moduleName]);
 
   useEffect(() => {
-    const storedRole = sessionStorage.getItem('userRole');
+    const storedRole = localStorage.getItem('userRole');
     if (storedRole) {
       setRole(storedRole);
     }
@@ -124,7 +124,7 @@ export default function OverviewAppView({ moduleName }) {
   useEffect(() => {
     const fetchTotalUsers = async () => {
       try {
-        const token = sessionStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
 
         const response = await axiosInstance.get(endpoints.users.counts, {
           headers: {
@@ -206,12 +206,13 @@ export default function OverviewAppView({ moduleName }) {
   pipelines.forEach((pipeline) => {
     const createdYear = new Date(pipeline.created_at).getFullYear();
 
-    // Only include records with "approved" status and matching selected state
     if (
       createdYear === selectedYear &&
       pipeline.status === 'approved' &&
-      (!selectedState ||
-        pipeline.company_contacts.some((contact) => contact.states.includes(selectedState)))
+      (!selectedState.length ||
+        pipeline.company_contacts.some((contact) =>
+          contact.states.some((state) => selectedState.includes(state))
+        ))
     ) {
       const monthIndex = new Date(pipeline.created_at).getMonth();
       monthlyData[monthIndex].approved += parseFloat(pipeline.worth);
@@ -299,7 +300,7 @@ export default function OverviewAppView({ moduleName }) {
         <Grid item xs={12} md={4} lg={4}>
           <Card sx={{ p: 3, height: '100%', boxShadow: 3, borderRadius: 2 }}>
             <Typography variant="h5" component="h2" gutterBottom>
-              Quarterly Pipeline Valuation
+              Quarterly Generated Sales Valuation
             </Typography>
             <Box
               sx={{ mb: 2, p: 1, border: '1px dashed', borderColor: 'grey.300', borderRadius: 1 }}
@@ -312,7 +313,7 @@ export default function OverviewAppView({ moduleName }) {
               chart={{
                 series: chartData,
               }}
-              sx={{ height: 350 }} // Adjust height as needed
+              sx={{ height: 350 }}
             />
           </Card>
         </Grid>
@@ -320,7 +321,7 @@ export default function OverviewAppView({ moduleName }) {
         <Grid item xs={12} md={8} lg={8}>
           <Card sx={{ p: 3, height: '100%', boxShadow: 3, borderRadius: 2 }}>
             <AppAreaInstalled
-              title="Yearly Pipeline Analysis"
+              title="Yearly Generated Sales Analysis"
               subheader={`(${selectedYear}) Analysis Data`}
               chart={{
                 categories: chartCategories,

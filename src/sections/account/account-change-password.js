@@ -67,7 +67,6 @@ export default function AccountChangePassword() {
   const handlePasswordChanges = async (data) => {
     try {
       const payload = {
-        old_password: data.oldPassword,
         new_password: data.newPassword,
       };
 
@@ -92,7 +91,6 @@ export default function AccountChangePassword() {
   return (
     <FormProvider methods={methods} onSubmit={onSubmit}>
       <Stack component={Card} spacing={3} sx={{ p: 3 }}>
-        <RHFTextField name="oldPassword" label="Old Password" />
         <RHFTextField name="newPassword" label="New Password" />
         <RHFTextField name="confirmNewPassword" label="Confirm New Password" />
         <LoadingButton

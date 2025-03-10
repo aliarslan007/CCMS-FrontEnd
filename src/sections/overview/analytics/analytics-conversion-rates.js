@@ -48,7 +48,7 @@ export default function AnalyticsActivityPage({ title, subheader, onFilterApply,
 
   const fetchUserActivity = async () => {
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       const response = await axiosInstance.get(endpoints.activity.user, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -77,7 +77,7 @@ export default function AnalyticsActivityPage({ title, subheader, onFilterApply,
 
   const handleApplyFilter = async () => {
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
 
       const response = await axiosInstance.post(
         endpoints.activity.filter,
@@ -101,7 +101,7 @@ export default function AnalyticsActivityPage({ title, subheader, onFilterApply,
 
   const handleDelete = async () => {
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       if (selectedRows.length === 0) {
         enqueueSnackbar('No rows selected');
         return;

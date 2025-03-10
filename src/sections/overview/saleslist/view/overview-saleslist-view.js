@@ -49,11 +49,11 @@ import UserTableToolbar from '../../../user/user-table-toolbar';
 // ----------------------------------------------------------------------
 
 const TABLE_HEAD = [
-  { id: 'name', label: 'Company Name', width: '15%' },
-  { id: 'phoneNumber', label: 'Phone Number', width: '15%' },
-  { id: 'company', label: 'Company Type', width: '15%' },
-  { id: 'Email', label: 'Email Address', width: '15%' },
-  { id: 'types', label: 'Company Address', width: '15%' },
+  { id: 'company_name', label: 'Company Name', width: '15%' },
+  { id: 'phone_number', label: 'Phone Number', width: '15%' },
+  { id: 'company_type', label: 'Company Type', width: '15%' },
+  { id: 'service', label: 'Services', width: '15%' },
+  { id: 'address1', label: 'Company Address', width: '15%' },
   { id: '', width: '25%' },
 ];
 
@@ -75,7 +75,11 @@ const defaultFilters = {
 // ----------------------------------------------------------------------
 
 export default function OverviewSalesListView({ contactId, onFilters, moduleName }) {
-  const table = useTable();
+  const table = useTable({
+    onSortChange: (newOrder, newOrderBy) => {
+      fetchSortedData(newOrderBy, newOrder);
+    },
+  });
 
   const settings = useSettingsContext();
 
@@ -124,8 +128,8 @@ export default function OverviewSalesListView({ contactId, onFilters, moduleName
       }
       setLoading(true);
       try {
-        const token = sessionStorage.getItem('authToken');
-        const userId = sessionStorage.getItem('userid');
+        const token = localStorage.getItem('authToken');
+        const userId = localStorage.getItem('userid');
         const response = await axiosInstance.get(endpoints.complete.accounts(userId), {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -150,6 +154,29 @@ export default function OverviewSalesListView({ contactId, onFilters, moduleName
     fetchUsers();
   }, [moduleName]);
 
+  // Sorting
+  const fetchSortedData = async (sortField, sortOrder) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const companyIds = users.map((user) => user.id);
+
+      const response = await axiosInstance.get(endpoints.all.company, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          sortBy: sortField,
+          sortOrder,
+          companyIds: companyIds.join(','),
+        },
+      });
+
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching sorted data:', error);
+    }
+  };
+
   // Handle inactive companies
   const handleMarkInactive = async () => {
     if (selectedIds.length === 0) {
@@ -159,7 +186,7 @@ export default function OverviewSalesListView({ contactId, onFilters, moduleName
     try {
       const idsString = selectedIds.map((user) => user.id).join(',');
       const url = endpoints.inactive.comapany(idsString);
-      const loginuser = JSON.parse(sessionStorage.getItem('user'));
+      const loginuser = JSON.parse(localStorage.getItem('user'));
       const representativeName = loginuser ? loginuser.display_name : '';
 
       const data = {
@@ -174,11 +201,9 @@ export default function OverviewSalesListView({ contactId, onFilters, moduleName
 
       const fullNames = selectedIds.map((user) => user.company_name).join(', ');
 
-      logActivity(
-        'User inactive a company',
-        moduleName || 'CLIENT COMPANIES',
-        { identification: fullNames }
-      );
+      logActivity('User inactive a company', moduleName || 'CLIENT COMPANIES', {
+        identification: fullNames,
+      });
       enqueueSnackbar('Selected Company marked as inactive', { variant: 'success' });
       setUsers((prevUsers) =>
         prevUsers.filter((user) => !selectedIds.map((s) => s.id).includes(user.id))
@@ -195,8 +220,8 @@ export default function OverviewSalesListView({ contactId, onFilters, moduleName
     setSelectedCompanyTypes(updatedTypes);
     if (updatedTypes.length === 0) {
       try {
-        const token = sessionStorage.getItem('authToken');
-        const userId = sessionStorage.getItem('userid');
+        const token = localStorage.getItem('authToken');
+        const userId = localStorage.getItem('userid');
         const response = await axiosInstance.get(endpoints.complete.accounts(userId), {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -213,7 +238,7 @@ export default function OverviewSalesListView({ contactId, onFilters, moduleName
       return;
     }
     try {
-      const userId = sessionStorage.getItem('userid');
+      const userId = localStorage.getItem('userid');
       const response = await axiosInstance.get(endpoints.filter.company, {
         params: {
           id: userId,
@@ -234,8 +259,8 @@ export default function OverviewSalesListView({ contactId, onFilters, moduleName
     setSelectedCompanyname(company_name);
     const flag = true;
     try {
-      const token = sessionStorage.getItem('authToken');
-      const userId = sessionStorage.getItem('userid');
+      const token = localStorage.getItem('authToken');
+      const userId = localStorage.getItem('userid');
       const response = await axiosInstance.get(endpoints.solo.details(companyId), {
         params: {
           flag,
@@ -257,7 +282,7 @@ export default function OverviewSalesListView({ contactId, onFilters, moduleName
   // Handle Search
   const fetchFilteredData = async (nameFilter) => {
     try {
-      const userId = sessionStorage.getItem('userid');
+      const userId = localStorage.getItem('userid');
 
       const response = await axiosInstance.get(endpoints.search.company, {
         params: {
@@ -490,7 +515,7 @@ export default function OverviewSalesListView({ contactId, onFilters, moduleName
 
         {/* Second Table To display the contacts of company */}
 
-        <Card>
+        <Card sx={{ mb: 2 }}>
           <Typography variant="h6" sx={{ p: 2 }}>
             <Box component="span" sx={{ color: 'text.secondary' }}>
               Contacts of{' '}
@@ -499,19 +524,11 @@ export default function OverviewSalesListView({ contactId, onFilters, moduleName
               component="span"
               sx={{
                 fontWeight: 'bold',
-                // textDecoration: 'underline', // Adds underline to the username
               }}
             >
               {selectedCompanyname || 'Selected Company'}
             </Box>
           </Typography>
-          {/* <UserTableToolbars
-            filters={filters}
-            onFilters={handleFilters}
-            roleOptions={[]}
-            selectedTypes={selectedCompanyTypes}
-            onTypeChange={handleTypeChange}
-          /> */}
 
           {canReset && (
             <UserTableFiltersResult
@@ -558,19 +575,16 @@ export default function OverviewSalesListView({ contactId, onFilters, moduleName
                       table.page * table.rowsPerPage,
                       table.page * table.rowsPerPage + table.rowsPerPage
                     )
-                    .map((row) => {
-                      console.log();
-                      return (
-                        <UserTableRows
-                          key={row.id}
-                          row={row}
-                          selected={selectedIds.includes(row.id)}
-                          onSelectRow={() => handleSelectRow(row.id)}
-                          onDeleteRow={() => handleDeleteRow(row.id)}
-                          onEditRow={() => handleEditRow(row.id)}
-                        />
-                      );
-                    })}
+                    .map((row) => (
+                      <UserTableRows
+                        key={row.id}
+                        row={row}
+                        selected={selectedIds.includes(row.id)}
+                        onSelectRow={() => handleSelectRow(row.id)}
+                        onDeleteRow={() => handleDeleteRow(row.id)}
+                        onEditRow={() => handleEditRow(row.id)}
+                      />
+                    ))}
                 </TableBody>
               </Table>
             </Scrollbar>

@@ -2,6 +2,10 @@
 import {
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid,
   Paper,
   Table,
@@ -10,6 +14,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material';
 import ButtonBase from '@mui/material/ButtonBase';
@@ -31,12 +36,14 @@ export default function CompanyContactDetails({ moduleName }) {
   const [loading, setLoading] = useState(true);
   const [isMarked, setIsMarked] = useState(false);
   const [buttonText, setButtonText] = useState('Mark For Deletion');
-  const { userRole } = useAuth(); // Get the user's role from the authentication context
+  const { userRole } = useAuth();
   const isAdmin = userRole === 'Admin';
   const [contact, setCompanyContacts] = useState([]);
   const [userAccess, setUserAccess] = useState('');
   const { logout } = useAuth();
   const logSentRef = useRef(false);
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
 
   const getBorderRadius = (index) => {
     if (index === 0) return '10px 0 0 10px';
@@ -53,7 +60,7 @@ export default function CompanyContactDetails({ moduleName }) {
       }
       setLoading(true);
       const flag = 'companycontacts';
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
 
       try {
         let companyData = null;
@@ -82,9 +89,9 @@ export default function CompanyContactDetails({ moduleName }) {
     const flag = true;
     const fetchCompanyContacts = async () => {
       try {
-        const token = sessionStorage.getItem('authToken');
-        const userId = sessionStorage.getItem('userid');
-        const role = sessionStorage.getItem('userRole');
+        const token = localStorage.getItem('authToken');
+        const userId = localStorage.getItem('userid');
+        const role = localStorage.getItem('userRole');
 
         const response = await axiosInstance.get(endpoints.solo.details(company.id), {
           params: { flag, userId, role },
@@ -132,7 +139,7 @@ export default function CompanyContactDetails({ moduleName }) {
   }, [company]);
 
   useEffect(() => {
-    const userId = sessionStorage.getItem('uuid');
+    const userId = localStorage.getItem('uuid');
     if (!userId) {
       console.error('User ID not found in SessionStorage');
       return;
@@ -154,9 +161,9 @@ export default function CompanyContactDetails({ moduleName }) {
   const checkUserAccessAndPerformAction = async (actionType) => {
     setLoading(true);
     try {
-      const uuid = sessionStorage.getItem('uuid');
+      const uuid = localStorage.getItem('uuid');
       if (!uuid) {
-        console.error('User ID not found in sessionStorage');
+        console.error('User ID not found in localStorage');
         return;
       }
       const response = await axiosInstance.get(endpoints.profile.details(uuid));
@@ -168,7 +175,7 @@ export default function CompanyContactDetails({ moduleName }) {
       if (is_active !== 1) {
         enqueueSnackbar('Your account is inactive. Logging out...', { variant: 'warning' });
 
-        sessionStorage.clear();
+        localStorage.clear();
 
         localStorage.clear();
 
@@ -197,7 +204,13 @@ export default function CompanyContactDetails({ moduleName }) {
   };
 
   const handleMarkForDelete = async () => {
-    const userId = sessionStorage.getItem('userid');
+    if (!deleteReason.trim()) {
+      enqueueSnackbar('Please add a reason before marking for deletion', {
+        variant: 'warning',
+      });
+      return;
+    }
+    const userId = localStorage.getItem('userid');
     try {
       const payload = {
         id: userId,
@@ -207,6 +220,7 @@ export default function CompanyContactDetails({ moduleName }) {
         title: company.service,
         company_name: company.company_name,
         sale_rep_name: `${company.full_name} ${company.last_name}`,
+        deletion_reason: deleteReason,
       };
       const response = await axiosInstance.post(endpoints.markdelete.marked(company.id), payload);
       logActivity('User marked a company for delete', moduleName || 'COMPANIES DETAILS PAGE', {
@@ -259,22 +273,44 @@ export default function CompanyContactDetails({ moduleName }) {
                 backgroundColor: '#cc0000',
               },
             }}
-            onClick={handleMarkForDelete}
+            // NEW: Open confirmation dialog instead of direct onClick call
+            onClick={() => setOpenConfirmDialog(true)}
             disabled={isMarked}
           >
             {buttonText}
           </Button>
-          {/* <Box
-            component="img"
-            sx={{
-              marginRight: '10px',
-            }}
-            src={chart}
-            alt="Profile"
-          />
-          <Link sx={{ color: 'rgba(24, 35, 61, 1)', fontSize: '14px' }} href="/dashboard/user/orgchart" underline="sx">
-            View Organization Chart
-          </Link> */}
+
+          {/* NEW: Confirmation Dialog */}
+          <Dialog open={openConfirmDialog} onClose={() => setOpenConfirmDialog(false)}>
+            <DialogTitle>Confirm Mark for Deletion</DialogTitle>
+            <DialogContent>
+              <div>
+                You are about to mark this record for deletion. Are you sure you want to proceed?
+              </div>
+              <TextField
+                autoFocus
+                margin="dense"
+                label="Reason"
+                type="text"
+                fullWidth
+                variant="standard"
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="Enter reason for deletion"
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setOpenConfirmDialog(false)}>No</Button>
+              <Button
+                onClick={async () => {
+                  setOpenConfirmDialog(false);
+                  await handleMarkForDelete();
+                }}
+              >
+                Yes
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
         <Box sx={{ flexGrow: 1 }}>
           <Grid container spacing={2}>

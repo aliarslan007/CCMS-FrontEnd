@@ -51,7 +51,7 @@ export default function AccountPopover() {
 
   const [options, setOptions] = useState([]);
 
-  const photo = JSON.parse(sessionStorage.getItem('user')) || null;
+  const photo = JSON.parse(localStorage.getItem('user')) || null;
 
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -68,7 +68,7 @@ export default function AccountPopover() {
   const notificationsPerPage = 3;
 
   useEffect(() => {
-    const storedUser = JSON.parse(sessionStorage.getItem('user'));
+    const storedUser = JSON.parse(localStorage.getItem('user'));
 
     const computedOptions = [
       {
@@ -90,14 +90,14 @@ export default function AccountPopover() {
 
   const fetchNotifications = async () => {
     try {
-      const userId = JSON.parse(sessionStorage.getItem('userid'));
+      const userId = JSON.parse(localStorage.getItem('userid'));
       if (!userId) {
         console.warn('User ID not found in session storage.');
         setLoadingNotifications(false);
         return;
       }
 
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       const response = await axiosInstance.get(endpoints.notification.user(userId), {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -122,13 +122,13 @@ export default function AccountPopover() {
 
   const markNotificationsAsRead = async () => {
     try {
-      const userId = JSON.parse(sessionStorage.getItem('userid'));
+      const userId = JSON.parse(localStorage.getItem('userid'));
       if (!userId) {
         console.warn('User ID not found in session storage.');
         return;
       }
 
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       await axiosInstance.put(
         endpoints.notification.is_read,
         { id: userId },

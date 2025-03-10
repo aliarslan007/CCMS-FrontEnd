@@ -84,9 +84,9 @@ export default function UserPiplineView({ moduleName }) {
 
   useEffect(() => {
     const fetchCompanies = async () => {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       try {
-        const userId = sessionStorage.getItem('userid');
+        const userId = localStorage.getItem('userid');
         const response = await axiosInstance.get(endpoints.complete.accounts(userId), {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -118,8 +118,8 @@ export default function UserPiplineView({ moduleName }) {
       if (!userRole) return;
       setLoading(true);
       try {
-        const userId = sessionStorage.getItem('userid');
-        const token = sessionStorage.getItem('authToken');
+        const userId = localStorage.getItem('userid');
+        const token = localStorage.getItem('authToken');
         const roleParam = userRole?.toLowerCase().replace(/\s+/g, '_') || 'unknown_role';
         const params = {
           user_id: userId,
@@ -167,7 +167,7 @@ export default function UserPiplineView({ moduleName }) {
   }, [enqueueSnackbar, userRole, filtersCleared, moduleName]);
 
   useEffect(() => {
-    const storedRole = sessionStorage.getItem('userRole');
+    const storedRole = localStorage.getItem('userRole');
     setUserRole(storedRole);
   }, []);
 
@@ -178,8 +178,8 @@ export default function UserPiplineView({ moduleName }) {
     setLoading(true);
 
     try {
-      const token = sessionStorage.getItem('authToken');
-      const userId = sessionStorage.getItem('userid');
+      const token = localStorage.getItem('authToken');
+      const userId = localStorage.getItem('userid');
       const companyId = selectedIds[selectedIds.length - 1];
       const response = await axiosInstance.get(endpoints.solo.details(companyId), {
         params: {
@@ -205,7 +205,7 @@ export default function UserPiplineView({ moduleName }) {
   };
 
   const handleSubmit = async () => {
-    const userId = sessionStorage.getItem('userid');
+    const userId = localStorage.getItem('userid');
 
     if (!selectedCompanies.length || !selectedContacts.length || !projectName || !worth) {
       enqueueSnackbar('Please fill all required fields!', { variant: 'warning' });
@@ -229,7 +229,7 @@ export default function UserPiplineView({ moduleName }) {
       setLoading(true);
       const response = await axiosInstance.post(endpoints.pipeline.create, payload, {
         headers: {
-          Authorization: `Bearer ${sessionStorage.getItem('authToken')}`,
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
         },
       });
 
@@ -268,7 +268,7 @@ export default function UserPiplineView({ moduleName }) {
       return;
     }
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       const response = await axiosInstance.put(
         `${endpoints.update.pipeline}/${pipelineId}`,
         { status: newStatus },
@@ -292,19 +292,16 @@ export default function UserPiplineView({ moduleName }) {
   const getFormattedRole = (role) => {
     if (role === 'Sales Manager') return 'sales_manager';
     if (role === 'Sales Representative') return 'sales_representative';
-    return role; // Default to original role
+    return role;
   };
 
-  const fetchFilteredPipelines = async (
-    selectedIds = [],
-  selectedStatusValues,
-) => {
-    if (!selectedIds || selectedIds.length === 0) {
-      return;
-    }
-
+  const fetchFilteredPipelines = async (selectedIds = [], selectedStatusValues) => {
     try {
-      const token = sessionStorage.getItem('authToken');
+      if (!pipelines || pipelines.length === 0) {
+        return;
+      }
+
+      const token = localStorage.getItem('authToken');
 
       const params = {
         ...(selectedIds.length > 0 && { profile_ids: selectedIds.join(',') }),
@@ -347,7 +344,6 @@ export default function UserPiplineView({ moduleName }) {
 
     let selectedIds = selectedProfileIds;
 
-    // If the user is a Sales Representative, extract profile_ids from pipelines
     if (userRole === 'Sales Representative' || userRole === 'Sales Manager') {
       const pipelineProfileIds = pipelines.map((pipeline) => pipeline.profile_id);
       selectedIds = [...new Set([...selectedIds, ...pipelineProfileIds])];
@@ -357,12 +353,7 @@ export default function UserPiplineView({ moduleName }) {
   };
 
   const applyDateFilter = () => {
-    if (!fromDate) {
-      enqueueSnackbar('Please select both From and To dates.', { variant: 'warning' });
-      return;
-    }
-
-    const userId = sessionStorage.getItem('userid');
+    const userId = localStorage.getItem('userid');
     let selectedIds = selectedProfileIds;
 
     if (
@@ -386,7 +377,7 @@ export default function UserPiplineView({ moduleName }) {
 
   const handleExport = async () => {
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
 
       const profileIds = pipelines.map((pipeline) => pipeline.profile_id);
 

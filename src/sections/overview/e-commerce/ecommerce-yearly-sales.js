@@ -16,7 +16,6 @@ import Box from '@mui/material/Box';
 // components
 import { useTheme } from '@mui/material/styles';
 import Chart, { useChart } from 'src/components/chart';
-import { usePopover } from 'src/components/custom-popover';
 
 // ----------------------------------------------------------------------
 
@@ -30,20 +29,14 @@ export default function EcommerceYearlySales({
 }) {
   const { colors, categories, series, options } = chart;
 
-  const popover = usePopover();
-
   const theme = useTheme();
 
   const [selectedUsers, setSelectedUsers] = useState([]);
 
-  const [seriesData, setSeriesData] = useState('2019');
-
-  const [openPopover, setOpenPopover] = useState(false);
-
   const chartOptions = useChart({
     colors: chart.colors || [theme.palette.primary.main, theme.palette.warning.main],
     chart: {
-      sparkline: { enabled: false }, // Keep normal axes
+      sparkline: { enabled: false },
     },
     xaxis: {
       categories: chart.categories,
@@ -62,22 +55,19 @@ export default function EcommerceYearlySales({
         formatter: (val) => `$${val.toLocaleString()}`,
       },
     },
-    // 2) Add line-specific options (stroke, markers, etc.)
     stroke: {
-      curve: 'smooth', // makes the lines smoother
-      width: 3, // line thickness
+      curve: 'smooth',
+      width: 3,
     },
     markers: {
-      size: 4, // marker size for each data point
+      size: 4,
       hover: {
         size: 6,
       },
     },
     dataLabels: {
-      enabled: false, // or `true` if you want numeric labels on each point
+      enabled: false,
     },
-    // Remove or ignore any bar-specific options here
-    // e.g., plotOptions.bar is not needed for line charts
     ...chart.options,
   });
 
@@ -87,6 +77,8 @@ export default function EcommerceYearlySales({
     onUserChange(value);
   };
 
+  const userRole = localStorage.getItem('userRole');
+
   return (
     <>
       <Card {...other}>
@@ -94,30 +86,88 @@ export default function EcommerceYearlySales({
           title={title}
           subheader={subheader}
           action={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Select Users</InputLabel>
-                <Select
-                  multiple
-                  value={selectedUsers}
-                  onChange={handleChangeUsers}
-                  renderValue={(selected) => selected.join(', ')}
-                  label="Select Users"
-                >
-                  {availableUsers.map((user) => (
-                    <MenuItem key={user.id} value={user.name}>
-                      <Checkbox checked={selectedUsers.indexOf(user.name) > -1} />
-                      <ListItemText primary={user.name} />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
+            userRole === 'Admin' || userRole === 'Sales Manager' ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel>Select Users</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedUsers}
+                    onChange={handleChangeUsers}
+                    renderValue={(selected) => selected.join(', ')}
+                    label="Select Users"
+                  >
+                    {availableUsers.map((user) => (
+                      <MenuItem key={user.id} value={user.name}>
+                        <Checkbox checked={selectedUsers.indexOf(user.name) > -1} />
+                        <ListItemText primary={user.name} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+            ) : null
           }
         />
-        {/* 4) Change the chart type to "line" */}
-        <Box sx={{ mt: 5, mx: 5, position: 'relative', overflow: 'visible' }}>
-          <Chart type="line" series={chart.series} options={chartOptions} height={190} />
+        <Box
+          sx={{
+            flex: 1,
+            p: { xs: 1, sm: 2, md: 3 },
+            position: 'relative',
+            minHeight: 250,
+          }}
+        >
+          <Box
+            sx={{
+              position: 'absolute',
+              width: '100%',
+              height: '100%',
+              '& > div': {
+                width: '100%!important',
+                height: '100%!important',
+              },
+            }}
+          >
+            <Chart
+              type="line"
+              series={chart.series}
+              options={{
+                ...chartOptions,
+                chart: {
+                  ...chartOptions.chart,
+                  toolbar: { show: false },
+                  zoom: { enabled: false },
+                },
+                responsive: [
+                  {
+                    breakpoint: 768,
+                    options: {
+                      chart: {
+                        height: 250,
+                      },
+                      legend: {
+                        position: 'bottom',
+                      },
+                    },
+                  },
+                  {
+                    breakpoint: 480,
+                    options: {
+                      chart: {
+                        height: 200,
+                      },
+                      legend: {
+                        position: 'bottom',
+                      },
+                    },
+                  },
+                ],
+                maintainAspectRatio: false,
+              }}
+              height="100%"
+              width="100%"
+            />
+          </Box>
         </Box>
       </Card>
     </>

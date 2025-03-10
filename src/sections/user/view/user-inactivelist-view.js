@@ -5,11 +5,9 @@ import { useNavigate } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Container from '@mui/material/Container';
-import IconButton from '@mui/material/IconButton';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableContainer from '@mui/material/TableContainer';
-import Tooltip from '@mui/material/Tooltip';
 // routes
 import { RouterLink } from 'src/routes/components';
 import { useRouter } from 'src/routes/hooks';
@@ -32,7 +30,6 @@ import {
 } from '@mui/material';
 import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
 import { ConfirmDialog } from 'src/components/custom-dialog';
-import Iconify from 'src/components/iconify';
 import Scrollbar from 'src/components/scrollbar';
 import { useSettingsContext } from 'src/components/settings';
 import {
@@ -52,12 +49,10 @@ import UserTableRow from '../user-table-row-restore';
 // ----------------------------------------------------------------------
 
 const TABLE_HEAD = [
-  // { id: 'company', label: 'ID', width: 150 },
-  { id: '', label: 'Representative Name', width: 180 },
-  { id: '', label: 'Record Name', width: 180 },
-  { id: '', label: 'Identification', width: 180 },
-  { id: '', label: 'Module', width: 180 },
-  // { id: '', label: 'Date&Time', width: 180 },
+  { id: 'representative_name', label: 'Inactive By', width: 180 },
+  { id: 'record_name', label: 'Full Name', width: 180 },
+  { id: 'identification', label: 'Role', width: 180 },
+  { id: '', label: 'Created At', width: 180 },
   { id: '', width: 88 },
 ];
 
@@ -73,7 +68,11 @@ export default function UserInactiveListView({ moduleName }) {
 
   const navigate = useNavigate();
 
-  const table = useTable();
+  const table = useTable({
+    onSortChange: (newOrder, newOrderBy) => {
+      fetchSortedData(newOrderBy, newOrder);
+    },
+  });
 
   const settings = useSettingsContext();
 
@@ -106,17 +105,20 @@ export default function UserInactiveListView({ moduleName }) {
   useEffect(() => {
     const fetchUsers = async () => {
       if (!logSentRef.current) {
-        const dynamicModuleName = moduleName || 'INACTIVE';
-        logActivity('User view inactive', dynamicModuleName);
+        const dynamicModuleName = moduleName || 'RECORDS MADE INACTIVE';
+        logActivity('User view Sales Rep Records', dynamicModuleName);
         logSentRef.current = true;
       }
       setLoading(true);
 
       try {
-        const token = sessionStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
         const config = {
           headers: {
             Authorization: `Bearer ${token}`,
+          },
+          params: {
+            flag: 'get-profile',
           },
         };
         const response = await axiosInstance.get(endpoints.restores.details, config);
@@ -134,6 +136,26 @@ export default function UserInactiveListView({ moduleName }) {
     };
     fetchUsers();
   }, [moduleName]);
+
+  // Sorting
+  const fetchSortedData = async (sortField, sortOrder) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axiosInstance.get(endpoints.restores.details, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          sortBy: sortField,
+          sortOrder,
+          flag: 'get-profile',
+        },
+      });
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching sorted data:', error);
+    }
+  };
 
   const handleRestore = async () => {
     if (selectedIds.length === 0) {
@@ -166,17 +188,6 @@ export default function UserInactiveListView({ moduleName }) {
   );
 
   const canReset = !isEqual(defaultFilters, filters);
-
-  const handleFilters = useCallback(
-    (name, value) => {
-      table.onResetPage();
-      setFilters((prevState) => ({
-        ...prevState,
-        [name]: value,
-      }));
-    },
-    [table]
-  );
 
   const handleDeleteRow = useCallback(
     (id) => {
@@ -255,8 +266,8 @@ export default function UserInactiveListView({ moduleName }) {
     <>
       <Container maxWidth="">
         <CustomBreadcrumbs
-          heading="Inactive"
-          links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'inactive' }]}
+          heading="Inactive Users"
+          links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'inactive users' }]}
           action={
             <Stack direction="row" spacing={5}>
               <Button
@@ -330,13 +341,6 @@ export default function UserInactiveListView({ moduleName }) {
               numSelected={numSelected}
               rowCount={rowCount}
               onSelectAllRows={handleSelectAllRows}
-              action={
-                <Tooltip title="Delete">
-                  <IconButton color="primary" onClick={confirm.onTrue}>
-                    <Iconify icon="solar:trash-bin-trash-bold" />
-                  </IconButton>
-                </Tooltip>
-              }
             />
             <Scrollbar>
               <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>

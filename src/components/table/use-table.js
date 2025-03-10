@@ -15,15 +15,22 @@ export default function useTable(props) {
 
   const [selected, setSelected] = useState(props?.defaultSelected || []);
 
+  const { onSortChange, ...otherProps } = props || {};
+
   const onSort = useCallback(
     (id) => {
       const isAsc = orderBy === id && order === 'asc';
-      if (id !== '') {
-        setOrder(isAsc ? 'desc' : 'asc');
-        setOrderBy(id);
+      const newOrder = isAsc ? 'desc' : 'asc';
+      const newOrderBy = id;
+
+      setOrder(newOrder);
+      setOrderBy(newOrderBy);
+
+      if (onSortChange) {
+        onSortChange(newOrder, newOrderBy);
       }
     },
-    [order, orderBy]
+    [order, orderBy, onSortChange]
   );
 
   const onSelectRow = useCallback(

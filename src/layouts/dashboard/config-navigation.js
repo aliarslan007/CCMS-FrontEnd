@@ -51,10 +51,10 @@ export function useNavData() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedUser = JSON.parse(sessionStorage.getItem('user'));
+    const storedUser = JSON.parse(localStorage.getItem('user'));
 
     if (!storedUser || !storedUser.role) {
-      sessionStorage.clear();
+      localStorage.clear();
       navigate('http://localhost:3030/ccms/');
     }
   }, [navigate]);
@@ -373,7 +373,7 @@ export function useNavData() {
       },
 
       {
-        subheader: t('Inactive'),
+        subheader: t('Records Made Inactive'),
         items: [
           {
             title: (
@@ -385,17 +385,49 @@ export function useNavData() {
                   paddingRight: '150px',
                 }}
               >
-                {t('Inactive')}
+                {t('Sales Rep Records')}
               </span>
             ),
             path: paths.dashboard.user.inactivelist,
+            // icon: ICONS.analytics,
+          },
+          {
+            title: (
+              <span
+                style={{
+                  textAlign: 'left',
+                  paddingLeft: '15px',
+                  display: 'block',
+                  paddingRight: '150px',
+                }}
+              >
+                {t('Client Records')}
+              </span>
+            ),
+            path: paths.dashboard.user.clientlist,
+            // icon: ICONS.analytics,
+          },
+          {
+            title: (
+              <span
+                style={{
+                  textAlign: 'left',
+                  paddingLeft: '15px',
+                  display: 'block',
+                  paddingRight: '150px',
+                }}
+              >
+                {t('Company Accounts Records')}
+              </span>
+            ),
+            path: paths.dashboard.user.inactivecompanylist,
             // icon: ICONS.analytics,
           },
         ],
       },
 
       {
-        subheader: t('Records Marked for deletion'),
+        subheader: t('Records Marked for Deletion'),
         items: [
           {
             title: (
@@ -407,11 +439,25 @@ export function useNavData() {
                   paddingRight: '90px',
                 }}
               >
-                {t('Marked For Deletion')}
+                {t('Company Accounts Records')}
               </span>
             ),
             path: paths.dashboard.user.deletion,
-            // icon: ICONS.analytics,
+          },
+          {
+            title: (
+              <span
+                style={{
+                  textAlign: 'left',
+                  paddingLeft: '15px',
+                  display: 'block',
+                  paddingRight: '90px',
+                }}
+              >
+                {t('Client Records')}
+              </span>
+            ),
+            path: paths.dashboard.user.clinet_deletion,
           },
         ],
       },
@@ -540,23 +586,91 @@ export function useNavData() {
         },
 
         {
+          subheader: t('Records Made Inactive'),
           items: [
+            // {
+            //   title: (
+            //     <span
+            //       style={{
+            //         textAlign: 'left',
+            //         paddingLeft: '15px',
+            //         display: 'block',
+            //         paddingRight: '150px',
+            //       }}
+            //     >
+            //       {t('Sales Rep Records')}
+            //     </span>
+            //   ),
+            //   path: paths.dashboard.user.inactivelist,
+            //   // icon: ICONS.analytics,
+            // },
             {
-              title: t('Inactive'),
-              path: paths.dashboard.user.root,
+              title: (
+                <span
+                  style={{
+                    textAlign: 'left',
+                    paddingLeft: '15px',
+                    display: 'block',
+                    paddingRight: '150px',
+                  }}
+                >
+                  {t('Client Records')}
+                </span>
+              ),
+              path: paths.dashboard.user.clientlist,
               // icon: ICONS.analytics,
-              children: [{ title: t('Inactive'), path: paths.dashboard.user.inactivelist }],
+            },
+            {
+              title: (
+                <span
+                  style={{
+                    textAlign: 'left',
+                    paddingLeft: '15px',
+                    display: 'block',
+                    paddingRight: '150px',
+                  }}
+                >
+                  {t('Company Accounts Records')}
+                </span>
+              ),
+              path: paths.dashboard.user.inactivecompanylist,
+              // icon: ICONS.analytics,
             },
           ],
         },
 
         {
+          subheader: t('Records Marked for Deletion'),
           items: [
             {
-              title: t('Mark For Delete'),
-              path: paths.dashboard.user.root,
-              // icon: ICONS.analytics,
-              children: [{ title: t('Mark For Delete'), path: paths.dashboard.user.deletion }],
+              title: (
+                <span
+                  style={{
+                    textAlign: 'left',
+                    paddingLeft: '15px',
+                    display: 'block',
+                    paddingRight: '90px',
+                  }}
+                >
+                  {t('Company Accounts Records')}
+                </span>
+              ),
+              path: paths.dashboard.user.deletion,
+            },
+            {
+              title: (
+                <span
+                  style={{
+                    textAlign: 'left',
+                    paddingLeft: '15px',
+                    display: 'block',
+                    paddingRight: '90px',
+                  }}
+                >
+                  {t('Client Records')}
+                </span>
+              ),
+              path: paths.dashboard.user.clinet_deletion,
             },
           ],
         },

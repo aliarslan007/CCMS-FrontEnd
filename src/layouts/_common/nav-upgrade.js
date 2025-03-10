@@ -1,4 +1,4 @@
-import { useState,useEffect } from 'react';
+import { useEffect, useState } from 'react';
 // @mui
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
@@ -14,7 +14,7 @@ export default function NavUpgrade() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userId = sessionStorage.getItem('uuid');
+    const userId = localStorage.getItem('uuid');
 
     if (userId) {
       axiosInstance
@@ -60,7 +60,11 @@ export default function NavUpgrade() {
     >
       <Stack alignItems="center">
         <Box sx={{ position: 'relative' }}>
-          <Avatar src={user.photo_url} alt={`${user.full_name} ${user.last_name}`} sx={{ width: 48, height: 48 }} />
+          <Avatar
+            src={user.photo_url}
+            alt={`${user.full_name} ${user.last_name}`}
+            sx={{ width: 48, height: 48 }}
+          />
         </Box>
 
         <Stack spacing={0.5} sx={{ mt: 1.5, mb: 2 }}>
@@ -76,4 +80,3 @@ export default function NavUpgrade() {
     </Stack>
   );
 }
-

@@ -161,6 +161,7 @@ export const endpoints = {
 
   get: {
     pipeline: `/api/pipelines`,
+    pending: `/api/pipelines/pending-worth`,
   },
 
   update: {

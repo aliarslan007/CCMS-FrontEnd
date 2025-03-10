@@ -1,4 +1,4 @@
-import { useEffect, useState ,useContext } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import echo from '../../Config/echoConfig';
 import { NotificationContext } from '../../context/NotificationContext';
 
@@ -7,7 +7,7 @@ const NotificationListener = () => {
   const { setNotifications } = useContext(NotificationContext);
 
   useEffect(() => {
-    const storedUser = JSON.parse(sessionStorage.getItem('user'));
+    const storedUser = JSON.parse(localStorage.getItem('user'));
     const userId = storedUser?.id;
 
     echo.connector.pusher.connection.bind('connected', () => {
@@ -24,7 +24,7 @@ const NotificationListener = () => {
 
     const notificationCallback = (notification) => {
       if (notification?.message) {
-        setNotifications(prevNotifications => [notification, ...prevNotifications]);
+        setNotifications((prevNotifications) => [notification, ...prevNotifications]);
       } else {
         console.warn('Notification received but no message found:', notification);
       }

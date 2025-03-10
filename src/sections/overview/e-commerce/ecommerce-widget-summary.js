@@ -1,15 +1,15 @@
 import PropTypes from 'prop-types';
 // @mui
-import { alpha, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
+import Stack from '@mui/material/Stack';
+import { alpha, useTheme } from '@mui/material/styles';
+import Typography from '@mui/material/Typography';
 // utils
 import { fNumber, fPercent } from 'src/utils/format-number';
 // components
-import Iconify from 'src/components/iconify';
 import Chart, { useChart } from 'src/components/chart';
+import Iconify from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
@@ -60,7 +60,7 @@ export default function EcommerceWidgetSummary({ title, percent, total, chart, s
 
   const renderTrending = (
     <Stack direction="row" alignItems="center" sx={{ mt: 2, mb: 1 }}>
-      <Iconify
+      {/* <Iconify
         icon={percent < 0 ? 'eva:trending-down-fill' : 'eva:trending-up-fill'}
         sx={{
           mr: 1,
@@ -75,17 +75,17 @@ export default function EcommerceWidgetSummary({ title, percent, total, chart, s
             bgcolor: alpha(theme.palette.error.main, 0.16),
           }),
         }}
-      />
+      /> */}
 
-      <Typography variant="subtitle2" component="div" noWrap>
+      {/* <Typography variant="subtitle2" component="div" noWrap>
         {percent > 0 && '+'}
 
         {fPercent(percent)}
 
         <Box component="span" sx={{ color: 'text.secondary', typography: 'body2' }}>
-          {' than last week'}
+          {' than last year'}
         </Box>
-      </Typography>
+      </Typography> */}
     </Stack>
   );
 

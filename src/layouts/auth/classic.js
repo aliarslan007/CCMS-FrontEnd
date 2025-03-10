@@ -1,51 +1,26 @@
 import PropTypes from 'prop-types';
 // @mui
-import { alpha, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
+import { alpha, useTheme } from '@mui/material/styles';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 // auth
 import { useAuthContext } from 'src/auth/hooks';
 // routes
-import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 // hooks
 import { useResponsive } from 'src/hooks/use-responsive';
 // theme
 import { bgGradient } from 'src/theme/css';
 // components
+import logoImage from 'src/assets/Images/logo.png';
 import Logo from 'src/components/logo';
 
 // ----------------------------------------------------------------------
 
-const METHODS = [
-  // {
-  //   id: 'jwt',
-  //   label: 'Jwt',
-  //   path: paths.auth.jwt.login,
-  //   icon: '/assets/icons/auth/ic_jwt.svg',
-  // },
-  // {
-  //   id: 'firebase',
-  //   label: 'Firebase',
-  //   path: paths.auth.firebase.login,
-  //   icon: '/assets/icons/auth/ic_firebase.svg',
-  // },
-  // {
-  //   id: 'amplify',
-  //   label: 'Amplify',
-  //   path: paths.auth.amplify.login,
-  //   icon: '/assets/icons/auth/ic_amplify.svg',
-  // },
-  // {
-  //   id: 'auth0',
-  //   label: 'Auth0',
-  //   path: paths.auth.auth0.login,
-  //   icon: '/assets/icons/auth/ic_auth0.svg',
-  // },
-];
+const METHODS = [];
 
 export default function AuthClassicLayout({ children, image, title }) {
   const { method } = useAuthContext();
@@ -75,6 +50,20 @@ export default function AuthClassicLayout({ children, image, title }) {
         pb: { xs: 15, md: 0 },
       }}
     >
+      <Box
+        component="img"
+        alt="auth"
+        src={logoImage}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          mx: 'auto',
+          mb: 5,
+          maxWidth: {
+            xs: 240,
+            sm: 280,
+          },
+        }}
+      />
       {children}
     </Stack>
   );
@@ -96,21 +85,28 @@ export default function AuthClassicLayout({ children, image, title }) {
       }}
     >
       <Typography variant="h3" sx={{ maxWidth: 480, textAlign: 'center' }}>
-        {title || 'Hi, Welcome back'}
+        <Box
+          component="img"
+          alt="SoluComp"
+          src={logoImage}
+          sx={{
+            maxWidth: {
+              xs: 280,
+              sm: 320,
+              md: 380,
+            },
+            height: 'auto',
+            objectFit: 'contain',
+            mb: 2,
+            filter: 'drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.15))',
+            transition: 'all 0.3s ease-in-out',
+            '&:hover': {
+              transform: 'scale(1.02)',
+              filter: 'drop-shadow(0px 6px 12px rgba(0, 0, 0, 0.2))',
+            },
+          }}
+        />
       </Typography>
-
-      <Box
-        component="img"
-        alt="auth"
-        src={image || '/assets/illustrations/illustration_dashboard.png'}
-        sx={{
-          maxWidth: {
-            xs: 480,
-            lg: 560,
-            xl: 720,
-          },
-        }}
-      />
 
       <Stack direction="row" spacing={2}>
         {METHODS.map((option) => (

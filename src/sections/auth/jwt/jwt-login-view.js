@@ -87,11 +87,12 @@ export default function JwtLoginView() {
       const { access_token } = response.data.user;
       const { role, access, id, uuid } = user;
       setUserRole(role);
-      sessionStorage.setItem('userRole', role);
-      sessionStorage.setItem('authToken', access_token);
-      sessionStorage.setItem('user', JSON.stringify(user));
-      sessionStorage.setItem('userid', id);
-      sessionStorage.setItem('uuid', uuid);
+      localStorage.setItem('userRole', role);
+      localStorage.setItem('authToken', access_token);
+      localStorage.setItem('authToken', access_token);
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('userid', id);
+      localStorage.setItem('uuid', uuid);
 
       router.push('/dashboard');
     } catch (error) {

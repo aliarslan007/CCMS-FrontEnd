@@ -71,7 +71,7 @@ export default function AccountGeneral({ moduleName }) {
   useEffect(() => {
     const fetchCompanyDetails = async () => {
       try {
-        const token = sessionStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
         const response = await axiosInstance.get(endpoints.solo.details(id), {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -244,7 +244,7 @@ export default function AccountGeneral({ moduleName }) {
     formData.forEach((value, key) => {});
 
     try {
-      const token = sessionStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       const dynamicEndpoint = endpoints.solo.details(id);
       await axiosInstance.post(dynamicEndpoint, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },

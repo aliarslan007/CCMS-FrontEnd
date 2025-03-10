@@ -17,7 +17,6 @@ import CustomPopover, { usePopover } from 'src/components/custom-popover';
 import Iconify from 'src/components/iconify';
 import { paths } from '../../routes/paths';
 
-
 // ----------------------------------------------------------------------
 
 export default function CompanyTableRow({ row, selected, onEditRow, onSelectRow, onDeleteRow }) {
@@ -41,7 +40,7 @@ export default function CompanyTableRow({ row, selected, onEditRow, onSelectRow,
   const handleCompanyClick = (uuid, contactData) => {
     navigate(paths.dashboard.user.companycontactdetails(uuid), { state: { contact: contactData } });
   };
-  const role = sessionStorage.getItem('userRole');
+  const role = localStorage.getItem('userRole');
 
   return (
     <>
@@ -61,7 +60,7 @@ export default function CompanyTableRow({ row, selected, onEditRow, onSelectRow,
 
           <ListItemText
             primary={company_name}
-            secondary=''
+            secondary=""
             primaryTypographyProps={{ typography: 'body2' }}
             secondaryTypographyProps={{ component: 'span', color: 'text.disabled' }}
           />

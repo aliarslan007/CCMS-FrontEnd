@@ -40,7 +40,7 @@ export default function CompanyTableRow({ row, selected, onEditRow, onSelectRow,
   const handleCompanyClick = (uuid, contactData) => {
     navigate(paths.dashboard.user.companycontactdetails(uuid), { state: { contact: contactData } });
   };
-  const role = sessionStorage.getItem('userRole');
+  const role = localStorage.getItem('userRole');
 
   return (
     <>
@@ -60,7 +60,7 @@ export default function CompanyTableRow({ row, selected, onEditRow, onSelectRow,
 
           <ListItemText
             primary={company_name}
-            secondary=''
+            secondary=""
             primaryTypographyProps={{ typography: 'body2' }}
             secondaryTypographyProps={{ component: 'span', color: 'text.disabled' }}
           />
@@ -81,10 +81,10 @@ export default function CompanyTableRow({ row, selected, onEditRow, onSelectRow,
         <TableCell sx={{ whiteSpace: 'nowrap' }}>{client_last_name}</TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>{personal_email}</TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>
-          {sessionStorage.getItem('userRole') === 'Admin' ? office_phone1 : details}
+          {localStorage.getItem('userRole') === 'Admin' ? cell_phone1 : details}
         </TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>
-          {sessionStorage.getItem('userRole') === 'Admin' ? cell_phone1 : follow_up_date}
+          {localStorage.getItem('userRole') === 'Admin' ? office_phone1 : follow_up_date}
         </TableCell>
 
         <TableCell

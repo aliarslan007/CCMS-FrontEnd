@@ -31,7 +31,10 @@ const AccountGeneral = lazy(() => import('src/pages/dashboard/user/companycontac
 const UserDetails = lazy(() => import('src/pages/dashboard/user/userdetails'));
 const MyCompany = lazy(() => import('src/pages/dashboard/user/mycompany'));
 const InactiveListPage = lazy(() => import('src/pages/dashboard/user/inactivelist'));
+const ClientListPage = lazy(() => import('src/pages/dashboard/user/clientInactivelist'));
+const InactiveCompanyListPage = lazy(() => import('src/pages/dashboard/user/companyInactivlist'));
 const DeletePage = lazy(() => import('src/pages/dashboard/user/deletion'));
+const ClientDeletePage = lazy(() => import('src/pages/dashboard/user/client_deletion'));
 const OrgChartPage = lazy(() => import('src/pages/dashboard/user/orgchart'));
 const PermissionPage = lazy(() => import('src/pages/dashboard/user/permission'));
 const PiplinePage = lazy(() => import('src/pages/dashboard/user/pipline'));
@@ -183,6 +186,22 @@ export const dashboardRoutes = [
             ),
           },
           {
+            path: 'Clientinactivelist',
+            element: (
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Manager']}>
+                <ClientListPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: 'companyInactivlist',
+            element: (
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Manager']}>
+                <InactiveCompanyListPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
             path: 'orgchartpage',
             element: (
               <ProtectedRoute allowedRoles={['Admin', 'Sales Manager', 'Sales Representative']}>
@@ -195,6 +214,14 @@ export const dashboardRoutes = [
             element: (
               <ProtectedRoute allowedRoles={['Admin', 'Sales Manager']}>
                 <DeletePage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: 'client_deletion',
+            element: (
+              <ProtectedRoute allowedRoles={['Admin', 'Sales Manager']}>
+                <ClientDeletePage />
               </ProtectedRoute>
             ),
           },

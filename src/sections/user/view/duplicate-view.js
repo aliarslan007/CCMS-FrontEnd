@@ -1,13 +1,15 @@
-import { Close as CloseIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 import {
   Box,
   Button,
   Checkbox,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   Grid,
   IconButton,
+  InputAdornment,
   Paper,
   Table,
   TableBody,
@@ -35,6 +37,12 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
   const [editingId, setEditingId] = useState(null);
   const [editedValues, setEditedValues] = useState({});
   const [localDuplicates, setLocalDuplicates] = useState(duplicates);
+  const [openConfirm, setOpenConfirm] = useState(false);
+  const [openAuth, setOpenAuth] = useState(false);
+  const [currentAction, setCurrentAction] = useState(null);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     setLocalDuplicates(duplicates);
@@ -78,7 +86,7 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
           : d
       );
 
-      setLocalDuplicates(updatedDuplicates); // Update local state
+      setLocalDuplicates(updatedDuplicates);
       enqueueSnackbar('Changes saved successfully', { variant: 'success' });
       handleCancel();
     } catch (error) {
@@ -90,12 +98,16 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
   const { enqueueSnackbar } = useSnackbar();
   if (!duplicates?.length) return null;
 
-  const handleYesToAll = async () => {
+  const processYesToAll = async () => {
     try {
       const payload = {
         duplicates: localDuplicates.map((dup) => ({
-          imported_record: dup.imported_record, // Use updated values
+          imported_record: dup.imported_record,
         })),
+        credentials: {
+          email: authEmail,
+          password: authPassword,
+        },
       };
 
       const response = await axiosInstance.post(endpoints.import.function, payload);
@@ -104,16 +116,21 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
       });
     } catch (error) {
       console.error('Error processing duplicates:', error);
-      enqueueSnackbar('Failed to process duplicate records.', { variant: 'error' });
+      const errorMessage = error.response?.data?.message || 'Failed to process duplicate records.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
     }
   };
 
-  const handleYes = async () => {
+  const processYes = async () => {
     try {
       const payload = {
         duplicates: selectedDuplicates.map((duplicate) => ({
-          imported_record: duplicate.imported_record, 
+          imported_record: duplicate.imported_record,
         })),
+        credentials: {
+          email: authEmail,
+          password: authPassword,
+        },
       };
 
       const response = await axiosInstance.post(endpoints.import.function, payload);
@@ -121,9 +138,31 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
         variant: 'success',
       });
     } catch (error) {
-      console.error('Error processing selected duplicates:', error);
-      enqueueSnackbar('Failed to process selected duplicates.', { variant: 'error' });
+      console.error('Error processing duplicates:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to process duplicate records.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
     }
+  };
+
+  const openConfirmDialog = (actionType) => {
+    setCurrentAction(actionType);
+    setOpenConfirm(true);
+  };
+
+  const handleAuthConfirm = async () => {
+    if (!authEmail || !authPassword) {
+      enqueueSnackbar('Please re-enter your email and password', { variant: 'warning' });
+      return;
+    }
+    setOpenAuth(false);
+    if (currentAction === 'all') {
+      await processYesToAll();
+    } else if (currentAction === 'selected') {
+      await processYes();
+    }
+    // Reset auth fields
+    setAuthEmail('');
+    setAuthPassword('');
   };
 
   if (!localDuplicates?.length) return null;
@@ -217,7 +256,6 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
                     <TableHead>
                       <TableRow>
                         <TableCell sx={{ fontWeight: 'bold' }}>Select</TableCell>
-                        {/* Display only the selected fields in the header */}
                         {['First Name', 'Last Name', 'Mobile Phone', 'Edit'].map((key) => (
                           <TableCell
                             key={key}
@@ -299,24 +337,88 @@ const DuplicateRecordsModal = ({ open, onClose, duplicates }) => {
 
         {/* Confirmation Buttons */}
         <Box display="flex" justifyContent="flex-end" mt={4}>
-          <Box display="flex" justifyContent="flex-end" mt={4}>
-            <Button variant="contained" color="success" onClick={handleYesToAll}>
-              Yes to all
-            </Button>
-            <Button variant="outlined" color="secondary" onClick={() => onClose()} sx={{ ml: 2 }}>
-              No
-            </Button>
+          <Button variant="contained" color="success" onClick={() => openConfirmDialog('all')}>
+            Yes to all
+          </Button>
+          <Button variant="outlined" color="secondary" onClick={() => onClose()} sx={{ ml: 2 }}>
+            No
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => openConfirmDialog('selected')}
+            sx={{ ml: 2 }}
+            disabled={selectedDuplicates.length === 0}
+          >
+            Yes
+          </Button>
+        </Box>
+
+        {/* NEW: Confirmation Dialog */}
+        <Dialog open={openConfirm} onClose={() => setOpenConfirm(false)}>
+          <DialogTitle>Confirm Duplicate Records</DialogTitle>
+          <DialogContent>
+            You are about to add all imported new records which seem to already exist in the system.
+            Are you sure you want to add these duplicate records?
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenConfirm(false)}>No</Button>
             <Button
-              variant="contained"
-              color="primary"
-              onClick={handleYes}
-              sx={{ ml: 2 }}
-              disabled={selectedDuplicates.length === 0} // Disable if no items selected
+              onClick={() => {
+                setOpenConfirm(false);
+                setOpenAuth(true);
+              }}
             >
               Yes
             </Button>
-          </Box>
-        </Box>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog open={openAuth} onClose={() => setOpenAuth(false)}>
+          <DialogTitle>Re-enter Your Credentials</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Email"
+              type="email"
+              fullWidth
+              variant="standard"
+              value={authEmail}
+              onChange={(e) => setAuthEmail(e.target.value)}
+            />
+            <TextField
+              margin="dense"
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              fullWidth
+              variant="standard"
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setOpenAuth(false);
+                setAuthEmail('');
+                setAuthPassword('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleAuthConfirm}>Confirm</Button>
+          </DialogActions>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

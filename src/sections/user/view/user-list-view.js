@@ -5,11 +5,9 @@ import { Box, Grid, Typography } from '@mui/material';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Container from '@mui/material/Container';
-import IconButton from '@mui/material/IconButton';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableContainer from '@mui/material/TableContainer';
-import Tooltip from '@mui/material/Tooltip';
 // routes
 import { RouterLink } from 'src/routes/components';
 import { useRouter } from 'src/routes/hooks';
@@ -42,13 +40,13 @@ import UserTableRow from '../user-table-row';
 // ----------------------------------------------------------------------
 
 const TABLE_HEAD = [
-  { id: 'name', label: 'Full Name' },
-  { id: 'name', label: 'Client Companies' },
-  { id: 'phoneNumber', label: 'Mobile Phone No', width: '15%' },
-  { id: 'company', label: 'Title', width: '15%' },
-  { id: 'email', label: 'Email', width: '15%' },
+  { id: 'full_name', label: 'Full Name' },
+  { id: 'full_name', label: 'Client Companies' },
+  { id: 'main_phone_number', label: 'Mobile Phone No', width: '15%' },
+  { id: 'title', label: 'Title', width: '15%' },
+  { id: 'personal_email', label: 'Email', width: '15%' },
   { id: 'role', label: 'Role', width: '15%' },
-  { id: '', label: 'Permissions', width: '5%' },
+  { id: 'access', label: 'Permissions', width: '5%' },
   { id: '', width: 88 },
 ];
 
@@ -61,8 +59,11 @@ const defaultFilters = {
 // ----------------------------------------------------------------------
 
 export default function UserListView({ moduleName }) {
-  const table = useTable();
-
+  const table = useTable({
+    onSortChange: (newOrder, newOrderBy) => {
+      fetchSortedData(newOrderBy, newOrder);
+    },
+  });
   const settings = useSettingsContext();
 
   const router = useRouter();
@@ -108,6 +109,21 @@ export default function UserListView({ moduleName }) {
     fetchUsers();
   }, [moduleName]);
 
+  const fetchSortedData = async (sortField, sortOrder) => {
+    try {
+      const response = await axiosInstance.get(endpoints.admin.details, {
+        params: {
+          sortBy: sortField,
+          sortOrder,
+        },
+      });
+      setUsers(response.data);
+      setTableData(response.data);
+    } catch (error) {
+      console.error('Error fetching sorted data:', error);
+    }
+  };
+
   // Handle Inactive Profiles
   const handleMarkInactive = async () => {
     if (selectedIds.length === 0) {
@@ -119,7 +135,7 @@ export default function UserListView({ moduleName }) {
       const idsString = selectedIds.map((user) => user.id).join(',');
       const url = endpoints.inactive.profile(idsString);
 
-      const loginuser = JSON.parse(sessionStorage.getItem('user'));
+      const loginuser = JSON.parse(localStorage.getItem('user'));
       const representativeName = loginuser ? loginuser.display_name : '';
 
       const data = {
@@ -168,6 +184,7 @@ export default function UserListView({ moduleName }) {
         },
       });
       setUsers(response.data.data);
+      setTableData(response.data.data);
     } catch (error) {
       console.error('Error fetching filtered companies:', error);
       enqueueSnackbar('Failed to fetch filtered companies. Please try again.', {
@@ -183,6 +200,7 @@ export default function UserListView({ moduleName }) {
         params: { name: nameFilter },
       });
       setUsers(response.data.data);
+      setTableData(response.data.data);
     } catch (error) {
       console.error('Error fetching filtered data:', error);
     }
@@ -338,16 +356,9 @@ export default function UserListView({ moduleName }) {
               numSelected={numSelected}
               rowCount={rowCount}
               onSelectAllRows={handleSelectAllRows}
-              action={
-                <Tooltip title="Delete">
-                  <IconButton color="primary" onClick={confirm.onTrue}>
-                    <Iconify icon="solar:trash-bin-trash-bold" />
-                  </IconButton>
-                </Tooltip>
-              }
             />
 
-            <Scrollbar>
+            <Scrollbar sx={{ maxHeight: 700000 }}>
               <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
                 <TableHeadCustom
                   order={table.order}
@@ -382,7 +393,7 @@ export default function UserListView({ moduleName }) {
           </TableContainer>
 
           <TablePaginationCustom
-            count={dataFiltered.length}
+            count={users.length}
             page={table.page}
             rowsPerPage={table.rowsPerPage}
             onPageChange={table.onChangePage}

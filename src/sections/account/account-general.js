@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form';
 import { useParams } from 'react-router-dom';
 import * as Yup from 'yup';
 // @mui
-import LoadingButton from '@mui/lab/LoadingButton';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -49,7 +49,7 @@ export default function AccountGeneral({ moduleName }) {
         logSentRef.current = true;
       }
       try {
-        const token = sessionStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
         const params = new URLSearchParams();
         params.append('admin', true);
         const response = await axiosInstance.get(endpoints.user.create, {
@@ -333,23 +333,17 @@ export default function AccountGeneral({ moduleName }) {
               <Box>
                 {isEditable ? (
                   <>
-                    <LoadingButton variant="outlined" onClick={handleCancel} sx={{ ml: 7, mr: 2 }}>
+                    <Button variant="outlined" onClick={handleCancel} sx={{ ml: 7, mr: 2 }}>
                       Cancel
-                    </LoadingButton>
-                    <LoadingButton
-                      variant="contained"
-                      onClick={(e) => {
-                        handleSaveChanges(watch()); // Directly pass data from form state (watch)
-                      }}
-                      disabled={saving}
-                    >
-                      {saving ? 'Saving...' : 'Save Changes'}
-                    </LoadingButton>
+                    </Button>
+                    <Button variant="contained" onClick={() => handleSaveChanges(watch())}>
+                      Save Changes
+                    </Button>
                   </>
                 ) : (
-                  <LoadingButton variant="contained" onClick={handleEditClick}>
+                  <Button variant="contained" onClick={handleEditClick}>
                     Edit
-                  </LoadingButton>
+                  </Button>
                 )}
               </Box>
             </Stack>

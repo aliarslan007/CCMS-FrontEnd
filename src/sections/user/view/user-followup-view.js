@@ -23,11 +23,11 @@ import Scrollbar from 'src/components/scrollbar';
 import { useSettingsContext } from 'src/components/settings';
 import {
   getComparator,
-  TableHeadCustom,
   TablePaginationCustom,
   TableSelectedAction,
   useTable,
 } from 'src/components/table';
+import TableHeadSimple from 'src/components/table/table-head-permission-contact';
 //
 import PropTypes from 'prop-types';
 import { useSnackbar } from 'src/components/snackbar';
@@ -90,7 +90,7 @@ export default function OverviewContactAccountView({ moduleName }) {
         logSentRef.current = true;
       }
       setLoading(true);
-      const userId = sessionStorage.getItem('userid');
+      const userId = localStorage.getItem('userid');
 
       if (!userId) {
         setLoading(false);
@@ -149,7 +149,7 @@ export default function OverviewContactAccountView({ moduleName }) {
 
   // Handle search functionality
   const fetchFilteredData = async (nameFilter) => {
-    const userId = sessionStorage.getItem('userid');
+    const userId = localStorage.getItem('userid');
     try {
       const response = await axiosInstance.get(endpoints.follow_ups.date, {
         params: {
@@ -304,7 +304,7 @@ export default function OverviewContactAccountView({ moduleName }) {
 
             <Scrollbar sx={{ maxHeight: 400 }}>
               <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
-                <TableHeadCustom
+                <TableHeadSimple
                   order={table.order}
                   orderBy={table.orderBy}
                   headLabel={TABLE_HEAD}

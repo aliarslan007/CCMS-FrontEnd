@@ -81,7 +81,7 @@ export default function UserTableToolbar({
     const fetchUsers = async () => {
       setLoading(true);
       try {
-        const token = sessionStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
         const response = await axiosInstance.get(endpoints.contact.details, {
           headers: {
             Authorization: `Bearer ${token}`,

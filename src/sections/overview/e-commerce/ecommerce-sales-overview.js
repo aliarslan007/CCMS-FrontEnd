@@ -1,12 +1,12 @@
 import PropTypes from 'prop-types';
 // @mui
-import Stack from '@mui/material/Stack';
-import CardHeader from '@mui/material/CardHeader';
-import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
+import CardHeader from '@mui/material/CardHeader';
 import LinearProgress from '@mui/material/LinearProgress';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 // utils
-import { fPercent, fCurrency } from 'src/utils/format-number';
+import { fCurrency } from 'src/utils/format-number';
 
 // ----------------------------------------------------------------------
 
@@ -43,7 +43,7 @@ function ProgressItem({ progress }) {
         <Typography variant="subtitle2">{fCurrency(progress.totalAmount)}</Typography>
 
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          &nbsp;({fPercent(progress.value)})
+          {progress.value !== 0 ? progress.value : 0}
         </Typography>
       </Stack>
 

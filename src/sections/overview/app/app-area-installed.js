@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import { useCallback, useState } from 'react';
 // @mui
-import Box from '@mui/material/Box';
+import { Box, Checkbox } from '@mui/material';
 import ButtonBase from '@mui/material/ButtonBase';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
@@ -100,16 +100,20 @@ export default function AppAreaInstalled({
               </ButtonBase>
 
               {/* State Dropdown */}
-              {showStateSelect && ( // Conditionally render the Select
+              {showStateSelect && (
                 <Select
-                  value={selectedState || ''}
+                  multiple
+                  value={selectedState || []}
                   onChange={(e) => onStateChange(e.target.value)}
                   displayEmpty
+                  renderValue={(selected) =>
+                    selected.length === 0 ? 'All States' : selected.join(', ')
+                  }
                   sx={{ minWidth: 100, height: 30 }}
                 >
-                  <MenuItem value="">All States</MenuItem>
                   {availableStates.map((state) => (
                     <MenuItem key={state} value={state}>
+                      <Checkbox checked={selectedState.includes(state)} />
                       {state}
                     </MenuItem>
                   ))}
